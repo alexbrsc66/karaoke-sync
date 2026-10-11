@@ -287,7 +287,7 @@ function render() {
   lines.forEach((l,i) => {
     const r = document.createElement('div'); r.className='row'; r.dataset.i=i;
     r.innerHTML = `<span class="n">${i+1}</span><input class="t ${l.t==null?'empty':''}" value="${fmt(l.t)}" placeholder="--:--.--"><span class="txt"></span>
-      <span class="acts"><button title="Set to the current time">⏱</button><button title="-0.1s">−</button><button title="+0.1s">+</button><button title="Clear this tap">✕</button><button class="sep" title="Edit the text (or double-click the line)">✎</button><button title="Insert a line below">＋</button><button title="Delete the line">🗑</button></span>`;
+      <span class="acts"><button title="Set the START of this line to the current time">⏱</button><button title="Set the END of the singing to the current time">⟧</button><button title="-0.1s">−</button><button title="+0.1s">+</button><button title="Clear this tap">✕</button><button class="sep" title="Edit the text (or double-click the line)">✎</button><button title="Insert a line below">＋</button><button title="Delete the line">🗑</button></span>`;
     const tx = r.querySelector('.txt');
     const main = shown(l); tx.textContent = main || (mode==='orig' ? '(no original text)' : '(empty line)'); if (!main) tx.classList.add('blank');
     const sec = l[OTHER()]; if (sec) { const sp = document.createElement('span'); sp.className = 'sub'; sp.textContent = (mode==='orig' ? 'cover: ' : 'original: ') + sec; tx.appendChild(sp); }
@@ -305,10 +305,11 @@ function render() {
     const inp = r.querySelector('.t');
     inp.onchange = () => { l.t = parse(inp.value); save(); render(); };
     inp.onfocus = () => { cursor=i; };
-    const [bNow,bMinus,bPlus,bDel,bEdit,bIns,bRem] = r.querySelectorAll('button');
+    const [bNow,bEnd,bMinus,bPlus,bDel,bEdit,bIns,bRem] = r.querySelectorAll('button');
     bEdit.onclick = () => { editing=i; render(); };
     bIns.onclick = () => insertAfter(i);
     bRem.onclick = () => removeAt(i);
+    bEnd.onclick = () => { if (l.t==null) return status('Set the start of this line first.'); snap(); l.e = Math.max(l.t+0.1, v.currentTime); save(); render(); };
     bNow.onclick = () => { l.t=v.currentTime; save(); render(); };
     bMinus.onclick = () => nudge(i,-0.1);
     bPlus.onclick = () => nudge(i,+0.1);

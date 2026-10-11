@@ -96,7 +96,7 @@ Incolla prima il testo originale, passa a **Original** e scrivilo, poi torna a *
 
 Dopo aver sincronizzato gli inizi premi **⇥ Auto ends** (meglio con la traccia di sola voce): legge la forma d'onda e mette un segnale blu di fine dove ogni riga smette di essere cantata. Controllali con lo zoom e trascina quelli sbagliati. Un secondo clic riempie solo quelli mancanti, quindi le correzioni a mano restano; con **Maiusc+clic** li ricalcola tutti. Le righe senza segnale di fine mantengono il comportamento di prima.
 
-Per correggere una fine a mano, ingrandisci con la rotella e trascina il suo segnale blu (`⟧` con il numero della riga): il video salta 1 s prima della nuova fine, così puoi ascoltarla con `Invio`. `Ctrl+Z` annulla un trascinamento. Salva poi il progetto: il render legge le fini dal `.karaoke.json`, non da un `.lrc`.
+Per **aggiungere** una fine a una riga che non ce l'ha, fai suonare il video e clicca il pulsante **⟧** sulla riga nel momento in cui il canto finisce (la riga deve già avere l'inizio); **⇥ Auto ends** riempie invece tutte quelle mancanti in una volta. Per correggere una fine a mano, ingrandisci con la rotella e trascina il suo segnale blu (`⟧` con il numero della riga): il video salta 1 s prima della nuova fine, così puoi ascoltarla con `Invio`. `Ctrl+Z` annulla un trascinamento. Salva poi il progetto: il render legge le fini dal `.karaoke.json`, non da un `.lrc`.
 
 ### Altri consigli
 

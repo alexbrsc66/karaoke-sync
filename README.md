@@ -94,7 +94,7 @@ Paste the original lyrics first, switch to **Original** and type them in, then s
 
 After syncing the starts, press **⇥ Auto ends** (best with the vocals-only track loaded): it reads the waveform and places a blue end marker where each line stops being sung. Check them while zooming in, and drag any that is off. Without a manual correction, a second click only fills the missing ones; **Shift+click** recalculates all of them. Lines without an end marker keep the old behaviour.
 
-To change one end by hand, zoom in with the wheel and drag its blue marker (`⟧` plus the line number); the video then jumps 1 s before the new end so you can listen to it with `Enter`. `Ctrl+Z` undoes a drag. Save the project afterwards: the render reads the ends from the `.karaoke.json`, not from an `.lrc`.
+To **add** an end to a line that has none, play the video and click the **⟧** button on that line's row at the moment the singing stops (it needs the line to be synced first); **⇥ Auto ends** also fills every missing one at once. To change one end by hand, zoom in with the wheel and drag its blue marker (`⟧` plus the line number); the video then jumps 1 s before the new end so you can listen to it with `Enter`. `Ctrl+Z` undoes a drag. Save the project afterwards: the render reads the ends from the `.karaoke.json`, not from an `.lrc`.
 
 ### Other tips
 
