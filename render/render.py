@@ -60,6 +60,27 @@ def load_style(path):
         return {}
 
 
+def sweep_text(text, total_cs):
+    """Karaoke text for one line: one karaoke tag per word, durations proportional to word length.
+
+    A single tag over a line that wraps onto two rows fills only the first row for the whole
+    duration and shows the second row all at once at the end; one tag per word makes the
+    colour run through the first row and then the second, at an even speed per character.
+    """
+    if not text.strip():
+        return esc(text)
+    words = text.split(' ')
+    parts = [wd + (' ' if i < len(words) - 1 else '') for i, wd in enumerate(words)]
+    total_w = sum(len(x) for x in parts)
+    out, acc, prev = [], 0, 0
+    for part in parts:
+        acc += len(part)
+        cur = round(total_cs * acc / total_w)
+        out.append('{\\kf%d}%s' % (max(0, cur - prev), esc(part)))
+        prev = cur
+    return ''.join(out)
+
+
 def build_ass(lines, w, h, dur, style=None):
     style = style or {}
     c_text = ass_color(style.get('text'), '#ffffff')
@@ -92,7 +113,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         end = nxt if nxt is not None else min(max(t + 6, (e + 1) if has_e else 0), dur)
         # the colour sweep follows the real singing (e), else it spans the gap to the next line, max 6 s
         sweep = (min(e, end) if has_e else min(end, t + 6)) - t
-        ev.append(f'Dialogue: 0,{ts(t)},{ts(end)},Cur,,0,0,0,,{{\\kf{max(1, round(sweep * 100))}}}{esc(text)}')
+        ev.append(f'Dialogue: 0,{ts(t)},{ts(end)},Cur,,0,0,0,,{sweep_text(text, max(1, round(sweep * 100)))}')
         if nxt is not None:
             ev.append(f'Dialogue: 0,{ts(t)},{ts(end)},Next,,0,0,0,,{esc(lines[i + 1][0])}')
     return head + '\n'.join(ev) + '\n'
