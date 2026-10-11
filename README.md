@@ -29,7 +29,7 @@ You press a key while the video plays: each press marks the start of the next li
 
 The sync page needs nothing. Python and ffmpeg are only needed for the render, which lives in the [`render/`](render/) folder: `install_requirements.bat` there checks for them and installs whatever is missing (full instructions in [`render/README.md`](render/README.md)).
 
-Tested on Windows 11. The page should work the same elsewhere; `render.bat` is Windows-only, but `render.py` can be run anywhere.
+Tested on **Windows 11** only. The sync page is plain HTML and should work the same on any system. The `.bat` files are Windows-only, but `render/render.py` is plain Python and can be run on Linux and macOS too: see [Linux and macOS](render/README.md#linux-and-macos). Launchers and installers for those systems are welcome as contributions.
 
 ## How to use
 

@@ -31,7 +31,7 @@ Si usa premendo un tasto mentre il video gira: ogni pressione segna l'inizio del
 
 La pagina di sincronizzazione non richiede nulla. Python e ffmpeg servono solo per il render, che sta nella cartella [`render/`](render/): lì `install_requirements.bat` controlla e installa ciò che manca (istruzioni complete in [`render/README.it.md`](render/README.it.md)).
 
-Provato su Windows 11. Su altri sistemi la pagina dovrebbe funzionare uguale; `render.bat` è specifico di Windows, ma `render.py` si può lanciare ovunque.
+Provato **solo su Windows 11**. Su altri sistemi la pagina dovrebbe funzionare uguale; `render.bat` è specifico di Windows, ma `render.py` si può lanciare ovunque.
 
 ## Come si usa
 

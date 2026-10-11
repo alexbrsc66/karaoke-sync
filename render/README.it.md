@@ -51,6 +51,22 @@ Poi parte il rendering con la percentuale di avanzamento; alla fine si apre la c
 python render.py video.mp4 lavoro.karaoke.json uscita.mp4
 ```
 
+## Linux e macOS
+
+Non provato dall'autore, ma `render.py` richiede solo Python 3 e ffmpeg, quindi dovrebbe funzionare:
+
+1. Installa Python 3 (con tkinter, serve solo per le finestre di scelta file) e ffmpeg con il gestore pacchetti, per esempio `sudo apt install python3 python3-tk ffmpeg` su Debian/Ubuntu oppure `brew install python-tk ffmpeg` su macOS.
+2. Controlla che il tuo ffmpeg abbia l'encoder `libx264` e il filtro `ass` (`ffmpeg -encoders | grep libx264`, `ffmpeg -filters | grep ' ass '`). Alcune distribuzioni includono una versione ridotta: per esempio `ffmpeg-free` di Fedora non ha l'encoder H.264.
+3. Lancialo da terminale:
+
+   ```bash
+   python3 render.py video.mp4 progetto.karaoke.json uscita.mp4
+   ```
+
+   Senza argomenti apre le finestre di scelta file (serve tkinter).
+
+Per le scritte viene usato il font Arial, o quello che il sistema sceglie se manca. Se scrivi uno script `.sh` o un installatore per il tuo sistema, una pull request è benvenuta.
+
 ## Note
 
 - Se come sorgente scegli un file **solo audio** (`.wav`, `.mp3`…), il video avrà lo sfondo nero.

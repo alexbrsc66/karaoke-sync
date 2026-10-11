@@ -49,6 +49,22 @@ Rendering then starts with a progress percentage; when done, the folder with the
 python render.py video.mp4 project.karaoke.json output.mp4
 ```
 
+## Linux and macOS
+
+Not tested by the author, but `render.py` only needs Python 3 and ffmpeg, so it should work:
+
+1. Install Python 3 (with tkinter, only needed for the file dialogs) and ffmpeg with your package manager, for example `sudo apt install python3 python3-tk ffmpeg` on Debian/Ubuntu or `brew install python-tk ffmpeg` on macOS.
+2. Make sure your ffmpeg has the `libx264` encoder and the `ass` filter (`ffmpeg -encoders | grep libx264`, `ffmpeg -filters | grep ' ass '`). Some distributions ship a reduced build, for example Fedora's default `ffmpeg-free` has no H.264 encoder.
+3. Run it from a terminal:
+
+   ```bash
+   python3 render.py video.mp4 project.karaoke.json output.mp4
+   ```
+
+   Without arguments it opens the file dialogs (needs tkinter).
+
+The lyrics use the Arial font, falling back to whatever font the system picks if it is missing. If you write a `.sh` launcher or an installer for your system, a pull request is welcome.
+
 ## Notes
 
 - If the source is an **audio-only** file (`.wav`, `.mp3`…), the video gets a black background.

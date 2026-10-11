@@ -108,18 +108,30 @@ def guess_project(video):
     return None
 
 
+def open_folder(path):
+    try:
+        if sys.platform.startswith('win'):
+            os.startfile(path)
+        elif sys.platform == 'darwin':
+            subprocess.Popen(['open', str(path)])
+        else:
+            subprocess.Popen(['xdg-open', str(path)])
+    except (OSError, AttributeError):
+        pass
+
+
 def main():
     args = sys.argv[1:]
     interactive = not args
     tk = fd = mb = None
-    if interactive or len(args) < 2:
+    if len(args) < 3:                      # a dialog may be needed
         try:
             import tkinter as tk
             from tkinter import filedialog as fd, messagebox as mb
         except ImportError:
             tk = None
     root = None
-    if tk and interactive:
+    if tk:
         root = tk.Tk(); root.withdraw(); root.attributes('-topmost', True)
 
     # 1) video or audio
@@ -150,7 +162,7 @@ def main():
         out = Path(args[2])
     else:
         out = video.with_name(video.stem + '.karaoke.mp4')
-        if root:
+        if root and interactive:           # dragging a video: save next to it without asking
             f = fd.asksaveasfilename(title='3/3 - Where should the finished video be saved?', defaultextension='.mp4',
                                      filetypes=[('MP4 video', '*.mp4')], initialdir=str(out.parent), initialfile=out.name)
             if not f:
@@ -201,12 +213,9 @@ def main():
                 mb.showerror('Render failed', msg)
             sys.exit(msg)
     print('Done:', out)
-    if root:
+    if root and interactive:
         mb.showinfo('Karaoke ready', f'Video saved to:\n{out}')
-        try:
-            os.startfile(out.parent)
-        except OSError:
-            pass
+        open_folder(out.parent)
 
 
 if __name__ == '__main__':
