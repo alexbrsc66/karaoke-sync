@@ -1,0 +1,212 @@
+"""Renderizza il karaoke: video/audio + tempi (.karaoke.json o .lrc) -> mp4 con scritte incise.
+
+Modi d'uso:
+  - doppio clic su render.bat            -> finestre per scegliere video, file dei tempi e dove salvare
+  - trascina un video su render.bat      -> cerca <video>.karaoke.json / .lrc accanto al video o in Download
+  - riga di comando:  python render.py video.mp4 [lavoro.karaoke.json|file.lrc] [output.mp4]
+"""
+import json, os, re, shutil, subprocess, sys, tempfile
+from pathlib import Path
+
+
+def find_tool(name):
+    p = shutil.which(name)
+    if p:
+        return p
+    links = Path(os.environ.get('LOCALAPPDATA', '')) / 'Microsoft/WinGet/Links' / (name + '.exe')
+    if links.exists():
+        return str(links)
+    sys.exit(f'{name} non trovato. Installa con: winget install Gyan.FFmpeg')
+
+
+def load_lines(path):
+    txt = Path(path).read_text(encoding='utf-8-sig')
+    if txt.lstrip().startswith(('{', '[{', '[\n', '[ ')):
+        try:
+            j = json.loads(txt)
+            arr = j['lines'] if isinstance(j, dict) else j
+            return [(l['text'], l['t']) for l in arr if l.get('t') is not None]
+        except (ValueError, KeyError):
+            pass
+    out = []
+    for raw in txt.splitlines():
+        m = re.match(r'\s*\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)', raw)
+        if m:
+            out.append((m.group(3), int(m.group(1)) * 60 + float(m.group(2))))
+    return out
+
+
+def ts(t):
+    cs = round(t * 100)
+    return f'{cs // 360000}:{cs // 6000 % 60:02d}:{cs // 100 % 60:02d}.{cs % 100:02d}'
+
+
+def esc(s):
+    return s.replace('\\', '\\\\').replace('{', '(').replace('}', ')')
+
+
+def ass_color(hexs, default):
+    m = re.fullmatch(r'#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})', hexs or '')
+    r, g, b = m.groups() if m else re.fullmatch(r'#?(..)(..)(..)', default).groups()
+    return f'&H00{b}{g}{r}'.upper().replace('&H', '&H')
+
+
+def load_style(path):
+    try:
+        j = json.loads(Path(path).read_text(encoding='utf-8-sig'))
+        return j.get('style', {}) if isinstance(j, dict) else {}
+    except ValueError:
+        return {}
+
+
+def build_ass(lines, w, h, dur, style=None):
+    style = style or {}
+    c_text = ass_color(style.get('text'), '#ffffff')
+    c_hi = ass_color(style.get('hi'), '#ffb020')
+    c_out = ass_color(style.get('outline'), '#000000')
+    c_next = ass_color(style.get('next'), '#ffd27a')
+    lines = sorted(lines, key=lambda x: x[1])
+    big, small = round(h * 0.075), round(h * 0.045)
+    head = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {w}
+PlayResY: {h}
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: Cur,Arial,{big},{c_hi},{c_text},{c_out},&H80000000,-1,0,0,0,100,100,0,0,1,{max(3, big // 12)},1,2,{round(w * .04)},{round(w * .04)},{round(h * .13)},1
+Style: Next,Arial,{small},{c_next},{c_next},{c_out},&H80000000,-1,0,0,0,100,100,0,0,1,{max(2, small // 14)},1,2,{round(w * .04)},{round(w * .04)},{round(h * .04)},1
+
+[Events]
+Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+"""
+    ev = []
+    if lines and lines[0][1] > 0.5:  # anteprima della prima riga prima che parta
+        ev.append(f'Dialogue: 0,{ts(0)},{ts(lines[0][1])},Next,,0,0,0,,{esc(lines[0][0])}')
+    for i, (text, t) in enumerate(lines):
+        nxt = lines[i + 1][1] if i + 1 < len(lines) else None
+        end = nxt if nxt is not None else min(t + 6, dur)
+        sweep = min(end, t + 6) - t
+        ev.append(f'Dialogue: 0,{ts(t)},{ts(end)},Cur,,0,0,0,,{{\\kf{max(1, round(sweep * 100))}}}{esc(text)}')
+        if nxt is not None:
+            ev.append(f'Dialogue: 0,{ts(t)},{ts(end)},Next,,0,0,0,,{esc(lines[i + 1][0])}')
+    return head + '\n'.join(ev) + '\n'
+
+
+VIDEO_TYPES = [('Video e audio', '*.mp4 *.mkv *.mov *.avi *.webm *.m4v *.wav *.mp3 *.flac *.m4a *.aac *.ogg'), ('Tutti i file', '*.*')]
+PROJ_TYPES = [('Lavoro karaoke', '*.json *.lrc'), ('Tutti i file', '*.*')]
+
+
+def guess_project(video):
+    for d in (video.parent, Path.home() / 'Downloads'):
+        for suf in ('.karaoke.json', '.lrc'):
+            c = d / (video.stem + suf)
+            if c.exists():
+                return c
+    return None
+
+
+def main():
+    args = sys.argv[1:]
+    interactive = not args
+    tk = fd = mb = None
+    if interactive or len(args) < 2:
+        try:
+            import tkinter as tk
+            from tkinter import filedialog as fd, messagebox as mb
+        except ImportError:
+            tk = None
+    root = None
+    if tk and interactive:
+        root = tk.Tk(); root.withdraw(); root.attributes('-topmost', True)
+
+    # 1) video o audio
+    if args:
+        video = Path(args[0]).resolve()
+    else:
+        if not root:
+            sys.exit(__doc__)
+        f = fd.askopenfilename(title='1/3 - Scegli il VIDEO (o l\'audio) da usare', filetypes=VIDEO_TYPES)
+        if not f:
+            sys.exit('Annullato.')
+        video = Path(f)
+
+    # 2) file dei tempi
+    proj = Path(args[1]) if len(args) > 1 else guess_project(video)
+    if root and (interactive or proj is None):
+        f = fd.askopenfilename(title='2/3 - Scegli il file dei tempi (.karaoke.json o .lrc)', filetypes=PROJ_TYPES,
+                               initialdir=str((proj.parent if proj else video.parent)),
+                               initialfile=(proj.name if proj else ''))
+        if not f:
+            sys.exit('Annullato.')
+        proj = Path(f)
+    if proj is None:
+        sys.exit('Non trovo il file dei tempi. Salvalo dal programma con "Salva lavoro" e avvia render.bat con doppio clic per sceglierlo.')
+
+    # 3) dove salvare
+    if len(args) > 2:
+        out = Path(args[2])
+    else:
+        out = video.with_name(video.stem + '.karaoke.mp4')
+        if root:
+            f = fd.asksaveasfilename(title='3/3 - Dove salvo il video finito?', defaultextension='.mp4',
+                                     filetypes=[('Video MP4', '*.mp4')], initialdir=str(out.parent), initialfile=out.name)
+            if not f:
+                sys.exit('Annullato.')
+            out = Path(f)
+
+    ffmpeg, ffprobe = find_tool('ffmpeg'), find_tool('ffprobe')
+    info = json.loads(subprocess.check_output([ffprobe, '-v', 'error', '-select_streams', 'v:0',
+        '-show_entries', 'stream=width,height:format=duration', '-of', 'json', str(video)]))
+    audio_only = not info.get('streams')
+    w, h = (1280, 720) if audio_only else (info['streams'][0]['width'], info['streams'][0]['height'])
+    dur = float(info['format']['duration'])
+
+    lines = load_lines(proj)
+    if not lines:
+        sys.exit('Nessuna riga con tempo nel file.')
+    print(f'Sorgente : {video.name} ({"solo audio, sfondo nero" if audio_only else "video"} {w}x{h}, {dur:.0f}s)')
+    print(f'Tempi    : {proj.name} ({len(lines)} righe sincronizzate)')
+    print(f'Uscita   : {out}')
+
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / 'sub.ass').write_text(build_ass(lines, w, h, dur, load_style(proj)), encoding='utf-8')
+        if audio_only:
+            src = ['-f', 'lavfi', '-i', f'color=c=black:s={w}x{h}:r=25', '-i', str(video), '-shortest']
+        else:
+            src = ['-i', str(video)]
+        cmd = [ffmpeg, '-y', '-loglevel', 'error', '-nostats', '-progress', 'pipe:1', *src, '-vf', 'ass=sub.ass',
+               '-c:v', 'libx264', '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p',
+               '-c:a', 'aac', '-b:a', '192k', str(out)]
+        pr = subprocess.Popen(cmd, cwd=tmp, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors='replace')
+        noise = re.compile(r'^(frame|fps|stream_\d+_\d+_q|bitrate|total_size|out_time_us|out_time_ms|out_time|dup_frames|drop_frames|speed|progress)=')
+        errors = []
+        for line in pr.stdout:
+            line = line.strip()
+            if line.startswith('out_time_us='):
+                try:
+                    pct = min(100, int(line.split('=')[1]) / 1e6 / dur * 100)
+                    print(f'\rRendering... {pct:5.1f}%', end='', flush=True)
+                except ValueError:
+                    pass
+            elif line and not noise.match(line):
+                errors.append(line)
+        pr.wait()
+        print()
+        if pr.returncode != 0:
+            msg = 'ffmpeg ha dato errore:\n' + '\n'.join(errors[-8:])
+            if root:
+                mb.showerror('Render fallito', msg)
+            sys.exit(msg)
+    print('Fatto:', out)
+    if root:
+        mb.showinfo('Karaoke pronto', f'Video salvato in:\n{out}')
+        try:
+            os.startfile(out.parent)
+        except OSError:
+            pass
+
+
+if __name__ == '__main__':
+    main()

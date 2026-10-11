@@ -1,0 +1,19 @@
+# lavori di sincronizzazione e media personali
+*.karaoke.json
+*.karaoke.mp4
+*.lrc
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.webm
+*.wav
+*.mp3
+*.flac
+*.m4a
+
+# Python / sistema
+__pycache__/
+*.pyc
+Thumbs.db
+desktop.ini
