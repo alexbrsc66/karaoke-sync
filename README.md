@@ -13,6 +13,7 @@ You press a key while the video plays: each press marks the start of the next li
 - **Tap sync**: `Space` (or a click on the video) assigns the current time to the current line and moves on to the next one.
 - **Waveform** above the progress bar, with zoom (mouse wheel), panning (drag) and the line start markers drawn on top. Markers can be **dragged** for precise corrections.
 - **Text editing** line by line (double-click), adding and deleting lines, empty lines for instrumental breaks. Timings are kept. `Ctrl+Z` undoes.
+- **Original / cover texts**: every line can hold two texts. The **🔤 Showing: Cover / Original** button switches which one is shown, edited, previewed and rendered; the other one stays visible in small grey under each line, handy when writing a cover over the original lyrics.
 - **Slow playback** (0.5x, 0.75x) and an adjustable **tap lead** to compensate for reaction time.
 - **Configurable colors** (text, highlight, outline, next line) for bright or dark videos.
 - **Autosave** in the browser, **Save / Load project** as `.karaoke.json`, `.lrc` export.
@@ -84,6 +85,10 @@ The trick that makes syncing **much faster**: separate the song into vocals and 
 
 This way the original vocals are not mixed over the backing track, and the timings stay accurate because both stems have the same length. If both files come from the same separation, the `vocals.karaoke.json` file can be used for the instrumental too by selecting it by hand in the second render dialog.
 
+### Writing a cover
+
+Paste the original lyrics first, switch to **Original** and type them in, then switch back to **Cover** and write your own words line by line: the original stays shown in grey under each line, so you can count syllables. Timings are shared by both texts. Use the same button before saving the project to choose which version the video is rendered with.
+
 ### Other tips
 
 - If your taps are consistently late or early, adjust **Tap lead**: the value is subtracted from every tap.
@@ -93,7 +98,7 @@ This way the original vocals are not mixed over the backing track, and the timin
 
 ## Formats
 
-- **`.karaoke.json`**: `{ "version": 2, "video": "name", "style": { "text", "hi", "outline", "next" }, "lines": [ { "text": "...", "t": 12.34 } ] }`, with `t` in seconds (`null` if the line is not synced yet).
+- **`.karaoke.json`**: `{ "version": 3, "video": "name", "mode": "cover", "style": { "text", "hi", "outline", "next" }, "lines": [ { "text": "cover", "orig": "original", "t": 12.34 } ] }`, with `t` in seconds (`null` if the line is not synced yet). `mode` is `cover` or `orig` and decides which text the render burns in (if a line has no original text, its cover text is used).
 - **`.lrc`**: the standard `[mm:ss.xx]text` format. It holds timings but not colors.
 
 ## Known limitations

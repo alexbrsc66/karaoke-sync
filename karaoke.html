@@ -45,6 +45,7 @@
   .row .acts { display:flex; gap:2px; }
   .row .acts button { padding:2px 6px; font-size:12px; }
   .row .acts button.sep { margin-left:6px; }
+  .row .txt .sub { display:block; font-size:11px; color:var(--dim); font-weight:400; overflow:hidden; text-overflow:ellipsis; }
   .row .txt.blank { color:var(--dim); font-style:italic; }
   .row .edit { width:100%; background:#101216; color:var(--txt); border:1px solid var(--acc); border-radius:4px; padding:3px 6px; font:inherit; }
   kbd { background:#2a2f38; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:12px; }
@@ -56,6 +57,7 @@
 <header>
   <button id="bV">🎬 Video</button><input id="fVideo" type="file" accept="video/*,audio/*,.mkv,.mp4,.webm,.mov,.mp3,.wav" hidden>
   <button id="bT">📄 Lyrics / LRC</button><input id="fText" type="file" hidden>
+  <button id="bMode" title="Switch the text shown and edited: original lyrics or your cover">🔤 Showing: Cover</button>
   <button id="bPaste">✏️ Edit text</button>
   <span id="status" style="flex:1;color:#ffb020;font-size:13px"></span>
   <label class="opt">Speed
@@ -120,6 +122,14 @@ function applyStyle() {
   document.querySelectorAll('#cur .h').forEach(e=>e.style.color = sty.hi);
 }
 for (const k in pickers) $(pickers[k]).oninput = e => { sty[k] = e.target.value; try { localStorage.setItem('karaoke:style', JSON.stringify(sty)); } catch(_){} applyStyle(); };
+// every line has two texts: text = your cover, orig = the original lyrics
+let mode = 'cover';
+try { mode = localStorage.getItem('karaoke:mode') || 'cover'; } catch(e){}
+const FIELD = () => mode==='orig' ? 'orig' : 'text';
+const OTHER = () => mode==='orig' ? 'text' : 'orig';
+const shown = l => l[FIELD()] || '';                                   // what the list shows and edits
+const disp  = l => (mode==='orig' ? (l.orig || l.text) : l.text) || ''; // what preview, .lrc and render use
+function setMode(m) { mode = m; try { localStorage.setItem('karaoke:mode', m); } catch(e){} editing = null; render(); }
 const save = () => { try { localStorage.setItem(key, JSON.stringify(lines)); localStorage.setItem('karaoke:last', JSON.stringify({key, lines})); } catch(e){} };
 
 // ---------- loading ----------
@@ -142,7 +152,7 @@ async function saveAs(fname, content, mime, ext, desc) {
 }
 $('bProjSave').onclick = () => {
   const name = key.split(':')[1] || 'karaoke';
-  saveAs(name.replace(/\.[^.]+$/,'') + '.karaoke.json', JSON.stringify({version:2, video:name, style:sty, lines}, null, 1), 'application/json', '.json', 'Karaoke project');
+  saveAs(name.replace(/\.[^.]+$/,'') + '.karaoke.json', JSON.stringify({version:3, video:name, mode, style:sty, lines}, null, 1), 'application/json', '.json', 'Karaoke project');
 };
 v.addEventListener('error', () => status('⚠ The browser cannot read this video (unsupported format/codec). Try H.264 mp4 or webm.'));
 v.addEventListener('loadedmetadata', () => status('Video loaded: ' + fmt(v.duration)));
@@ -163,14 +173,15 @@ function setFromText(txt) {
   if (/^\s*[\[{]/.test(txt)) { try {
     const j = JSON.parse(txt), arr = Array.isArray(j) ? j : j.lines;
     if (j.style) { Object.assign(sty, j.style); applyStyle(); }
-    if (Array.isArray(arr)) { lines = arr.map(l=>({text:String(l.text), t:l.t==null?null:+l.t})); cursor = nextEmpty(); save(); render();
+    if (Array.isArray(arr)) { if (j.mode==='orig' || j.mode==='cover') mode = j.mode;
+      lines = arr.map(l=>({text:String(l.text), orig:String(l.orig||''), t:l.t==null?null:+l.t})); cursor = nextEmpty(); save(); render();
       status('Project loaded: ' + lines.length + ' lines' + (j.video ? ' — original video: ' + j.video : '')); return; }
   } catch(e){} }
   const out = [];
   for (const raw of txt.split(/\r?\n/)) {
     const m = raw.match(/^\s*\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/);
-    if (m) out.push({ text:m[3], t:(+m[1])*60+ +m[2] });
-    else if (raw.trim()) out.push({ text:raw.trim(), t:null });
+    if (m) out.push({ text:m[3], orig:'', t:(+m[1])*60+ +m[2] });
+    else if (raw.trim()) out.push({ text:raw.trim(), orig:'', t:null });
   }
   lines = out; cursor = nextEmpty(); save(); render();
 }
@@ -187,18 +198,22 @@ addEventListener('drop', async e => {
 });
 
 // pasted-text editor
+$('bMode').onclick = () => setMode(mode==='orig' ? 'cover' : 'orig');
 $('bPaste').onclick = () => {
   const open = $('lyricsEdit').style.display==='block';
-  if (!open) $('lyricsEdit').value = lines.map(l=>l.text).join('\n');
+  if (!open) $('lyricsEdit').value = lines.map(shown).join('\n');
   $('lyricsEdit').style.display = open ? 'none':'block';
   $('bApply').style.display = open ? 'none':'';
   $('list').style.display = open ? '':'none';
 };
 $('bApply').onclick = () => {
   snap();
-  const texts = $('lyricsEdit').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean), old = lines;
-  if (texts.length === old.length) lines = texts.map((text,i)=>({text, t:old[i].t}));   // same number of lines: times are kept even if the words change
-  else { let p = 0; lines = texts.map(text => { let j=p; while (j<old.length && old[j].text!==text) j++; if (j<old.length) { p=j+1; return {text, t:old[j].t}; } return {text, t:null}; }); }
+  const F = FIELD(), O = OTHER(), old = lines;
+  const texts = $('lyricsEdit').value.split(/\r?\n/).map(x=>x.trim());
+  while (texts.length && !texts[texts.length-1]) texts.pop();           // only trailing blank lines are dropped
+  const mk = (txt, src) => { const n = {text:'', orig:'', t: src ? src.t : null}; n[F] = txt; n[O] = src ? (src[O]||'') : ''; return n; };
+  if (texts.length === old.length) lines = texts.map((txt,i) => mk(txt, old[i]));   // same number of lines: times (and the other text) are kept
+  else { let p = 0; lines = texts.map(txt => { let j=p; while (j<old.length && shown(old[j])!==txt) j++; if (j<old.length) { p=j+1; return mk(txt, old[j]); } return mk(txt, null); }); }
   cursor = nextEmpty(); save(); $('bPaste').onclick(); render();
 };
 // two-click confirmation (browser confirm() dialogs can be blocked)
@@ -260,12 +275,13 @@ function nudge(i, d) { const l=lines[i]; if(!l||l.t==null) return; l.t=Math.max(
 let editing = null; const hist = [];
 function snap() { hist.push(JSON.stringify(lines)); if (hist.length>100) hist.shift(); }
 function undoEdit() { if (!hist.length) return status('Nothing to undo'); lines = JSON.parse(hist.pop()); editing=null; cursor=Math.min(cursor,lines.length); save(); render(); status('Undone (Ctrl+Z)'); }
-function insertAfter(i) { snap(); lines.splice(i+1,0,{text:'',t:null}); cursor=i+1; editing=i+1; save(); render(); }
+function insertAfter(i) { snap(); lines.splice(i+1,0,{text:'',orig:'',t:null}); cursor=i+1; editing=i+1; save(); render(); }
 function removeAt(i) { snap(); lines.splice(i,1); if (cursor>i) cursor--; cursor=Math.min(cursor,lines.length); editing=null; save(); render(); status('Line deleted — Ctrl+Z to undo'); }
 $('bAddEnd').onclick = () => insertAfter(lines.length-1);
 
 // ---------- list ----------
 function render() {
+  $('bMode').textContent = mode==='orig' ? '🔤 Showing: Original' : '🔤 Showing: Cover';
   $('count').textContent = `${lines.filter(l=>l.t!=null).length}/${lines.length} lines synced`;
   const L = $('list'); L.innerHTML = '';
   lines.forEach((l,i) => {
@@ -273,13 +289,14 @@ function render() {
     r.innerHTML = `<span class="n">${i+1}</span><input class="t ${l.t==null?'empty':''}" value="${fmt(l.t)}" placeholder="--:--.--"><span class="txt"></span>
       <span class="acts"><button title="Set to the current time">⏱</button><button title="-0.1s">−</button><button title="+0.1s">+</button><button title="Clear this tap">✕</button><button class="sep" title="Edit the text (or double-click the line)">✎</button><button title="Insert a line below">＋</button><button title="Delete the line">🗑</button></span>`;
     const tx = r.querySelector('.txt');
-    tx.textContent = l.text || '(empty line)'; if (!l.text) tx.classList.add('blank');
+    const main = shown(l); tx.textContent = main || (mode==='orig' ? '(no original text)' : '(empty line)'); if (!main) tx.classList.add('blank');
+    const sec = l[OTHER()]; if (sec) { const sp = document.createElement('span'); sp.className = 'sub'; sp.textContent = (mode==='orig' ? 'cover: ' : 'original: ') + sec; tx.appendChild(sp); }
     tx.onclick = () => { cursor=i; if(l.t!=null) v.currentTime=Math.max(0,l.t-0.5); render(); };
     tx.ondblclick = () => { editing=i; render(); };
     if (editing === i) {
-      const ed = document.createElement('input'); ed.className='edit'; ed.value = l.text; ed.placeholder='Line text';
+      const ed = document.createElement('input'); ed.className='edit'; ed.value = shown(l); ed.placeholder = mode==='orig' ? 'Original line text' : 'Cover line text';
       let done = false;
-      const commit = (next) => { if (done) return; done = true; const val = ed.value.trim(); if (val !== l.text) { snap(); l.text = val; } editing=null; save();
+      const commit = (next) => { if (done) return; done = true; const val = ed.value.trim(); if (val !== shown(l)) { snap(); l[FIELD()] = val; } editing=null; save();
         if (next) insertAfter(i); else render(); };
       ed.onkeydown = e => { if (e.key==='Enter') { e.preventDefault(); commit(e.ctrlKey||e.shiftKey); } else if (e.key==='Escape') { done=true; editing=null; render(); } e.stopPropagation(); };
       ed.onblur = () => commit(false);
@@ -321,10 +338,10 @@ function mark(force) {
   });
   const nextIdx = lines.findIndex((l,i)=>i>k && l.t!=null);
   const cur = $('cur'); cur.textContent = '';
-  if (k>=0) { const w=document.createElement('span'); w.className='w'; w.textContent=lines[k].text;
-    const h=document.createElement('span'); h.className='h'; h.textContent=lines[k].text; h.style.color=sty.hi; w.appendChild(h); cur.appendChild(w); }
+  if (k>=0) { const w=document.createElement('span'); w.className='w'; w.textContent=disp(lines[k]);
+    const h=document.createElement('span'); h.className='h'; h.textContent=disp(lines[k]); h.style.color=sty.hi; w.appendChild(h); cur.appendChild(w); }
   fitCur();
-  $('nxt').textContent = k+1<lines.length ? lines[k+1].text : '';
+  $('nxt').textContent = k+1<lines.length ? disp(lines[k+1]) : '';
   const el = document.querySelector('.row.cursor') || document.querySelector('.row.live');
   if (el && (force || !v.paused)) el.scrollIntoView({block:'center', behavior:'smooth'});
 }
@@ -447,7 +464,7 @@ setInterval(() => {
 
 // ---------- export ----------
 $('bSave').onclick = () => {
-  const lrc = lines.filter(l=>l.t!=null).map(l => { const m=Math.floor(l.t/60), s=(l.t-m*60); return `[${String(m).padStart(2,'0')}:${s.toFixed(2).padStart(5,'0')}]${l.text}`; }).join('\n');
+  const lrc = lines.filter(l=>l.t!=null).map(l => { const m=Math.floor(l.t/60), s=(l.t-m*60); return `[${String(m).padStart(2,'0')}:${s.toFixed(2).padStart(5,'0')}]${disp(l)}`; }).join('\n');
   saveAs((key.split(':')[1]||'karaoke').replace(/\.[^.]+$/,'') + '.lrc', lrc, 'text/plain', '.lrc', 'Synced lyrics (LRC)');
 };
 $('bFull').onclick = () => $('stage').requestFullscreen?.();

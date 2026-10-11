@@ -15,6 +15,7 @@ Si usa premendo un tasto mentre il video gira: ogni pressione segna l'inizio del
 - **Sincronizzazione a tap**: `Spazio` (o un clic sul video) assegna il tempo attuale alla riga corrente e passa alla successiva.
 - **Forma d'onda** sopra la barra di avanzamento, con zoom (rotella), spostamento (trascina) e i punti di inizio riga disegnati sopra. I punti si **trascinano** per correggerli con precisione.
 - **Modifica del testo** riga per riga (doppio clic), aggiunta ed eliminazione di righe, righe vuote per le pause. I tempi non si perdono. `Ctrl+Z` annulla.
+- **Testo originale / cover**: ogni riga può contenere due testi. Il pulsante **🔤 Showing: Cover / Original** sceglie quale mostrare, modificare, vedere in anteprima e usare nel render; l'altro resta visibile in piccolo e in grigio sotto ogni riga, comodo per scrivere una cover sopra il testo originale.
 - **Velocità ridotta** (0.5x, 0.75x) e **anticipo tap** regolabile per compensare i tempi di reazione.
 - **Colori configurabili** (testo, evidenziazione, contorno, riga successiva) per video chiari o scuri.
 - **Salvataggio automatico** nel browser, **Save project / Load project** su file `.karaoke.json`, esportazione `.lrc`.
@@ -86,6 +87,10 @@ Il trucco che rende la sincronizzazione **molto più veloce**: separa la canzone
 
 Così non c'è la voce originale sopra la base e i tempi restano precisi, perché le due tracce hanno la stessa durata. Se i file sono stati separati con lo stesso programma, il file `nomevoce.karaoke.json` si può usare anche per la base scegliendolo a mano nella seconda finestra del render.
 
+### Scrivere una cover
+
+Incolla prima il testo originale, passa a **Original** e scrivilo, poi torna a **Cover** e scrivi le tue parole riga per riga: l'originale resta in grigio sotto ogni riga, così puoi contare le sillabe. I tempi sono comuni ai due testi. Prima di salvare il lavoro usa lo stesso pulsante per scegliere con quale versione fare il video.
+
 ### Altri consigli
 
 - Se segni i tempi in ritardo o in anticipo in modo costante, regola **Tap lead**: il valore viene sottratto a ogni tap.
@@ -95,7 +100,7 @@ Così non c'è la voce originale sopra la base e i tempi restano precisi, perch�
 
 ## Formati
 
-- **`.karaoke.json`**: `{ "version": 2, "video": "nome", "style": { "text", "hi", "outline", "next" }, "lines": [ { "text": "...", "t": 12.34 } ] }`, con `t` in secondi (`null` se la riga non è ancora sincronizzata).
+- **`.karaoke.json`**: `{ "version": 3, "video": "nome", "mode": "cover", "style": { "text", "hi", "outline", "next" }, "lines": [ { "text": "cover", "orig": "originale", "t": 12.34 } ] }`, con `t` in secondi (`null` se la riga non è ancora sincronizzata). `mode` è `cover` oppure `orig` e decide quale testo viene inciso nel render (se una riga non ha il testo originale si usa quello della cover).
 - **`.lrc`**: formato standard `[mm:ss.xx]testo`. Contiene i tempi ma non i colori.
 
 ## Limiti noti

@@ -25,7 +25,8 @@ def load_lines(path):
         try:
             j = json.loads(txt)
             arr = j['lines'] if isinstance(j, dict) else j
-            return [(l['text'], l['t']) for l in arr if l.get('t') is not None]
+            orig = isinstance(j, dict) and j.get('mode') == 'orig'   # page set to "Showing: Original"
+            return [((l.get('orig') or l['text']) if orig else l['text'], l['t']) for l in arr if l.get('t') is not None]
         except (ValueError, KeyError):
             pass
     out = []
