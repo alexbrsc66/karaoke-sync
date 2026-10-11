@@ -1,8 +1,8 @@
 @echo off
 rem ---------------------------------------------------------------
-rem  Doppio clic: ti chiede video/audio, file dei tempi e dove salvare.
-rem  Oppure trascina un video su questo file: cerca
-rem  nomevideo.karaoke.json (o .lrc) accanto al video o in Download.
+rem  Double-click: asks for the video/audio, the timing file and
+rem  where to save. Or drag a video onto this file: it looks for
+rem  videoname.karaoke.json (or .lrc) next to the video or in Downloads.
 rem ---------------------------------------------------------------
 setlocal
 set "PY="
@@ -12,11 +12,13 @@ if not defined PY goto nopython
 
 %PY% "%~dp0render.py" %*
 echo.
-pause
+echo Press any key to close...
+pause >nul
 exit /b
 
 :nopython
-echo Python non trovato.
-echo Esegui prima "installa_requisiti.bat" in questa cartella.
+echo Python not found.
+echo Run "install_requirements.bat" in this folder first.
 echo.
-pause
+echo Press any key to close...
+pause >nul

@@ -1,91 +1,114 @@
 # Karaoke Sync
 
-Uno strumento semplice per **sincronizzare i testi su un video o un brano audio** e produrre un video karaoke con le parole che si colorano a tempo.
+[🇮🇹 Italiano](README.it.md) · 🇬🇧 English
 
-Si usa premendo un tasto mentre il video gira: ogni pressione segna l'inizio della riga successiva. Poi si rifinisce guardando la forma d'onda. Niente account, niente installazioni per la parte di sincronizzazione: è una singola pagina HTML che gira nel browser.
+A simple tool to **sync lyrics to a video or an audio track** and produce a karaoke video where the words light up in time.
 
-## Cosa fa
+You press a key while the video plays: each press marks the start of the next line. Then you fine-tune the result on the waveform. No accounts, nothing to install for the syncing part: it is a single HTML page that runs in your browser.
 
-- **Sincronizzazione a tap**: `Spazio` (o un clic sul video) assegna il tempo attuale alla riga corrente e passa alla successiva.
-- **Forma d'onda** sopra la barra di avanzamento, con zoom (rotella), spostamento (trascina) e i punti di inizio riga disegnati sopra. I punti si **trascinano** per correggerli con precisione.
-- **Modifica del testo** riga per riga (doppio clic), aggiunta ed eliminazione di righe, righe vuote per le pause. I tempi non si perdono. `Ctrl+Z` annulla.
-- **Velocità ridotta** (0.5x, 0.75x) e **anticipo tap** regolabile per compensare i tempi di reazione.
-- **Colori configurabili** (testo, evidenziazione, contorno, riga successiva) per video chiari o scuri.
-- **Salvataggio automatico** nel browser, **Salva lavoro / Carica lavoro** su file `.karaoke.json`, esportazione `.lrc`.
-- **Render finale** con ffmpeg: video con le scritte incise, sincronizzate al fotogramma. Funziona anche con un file solo audio (sfondo nero).
+![Karaoke Sync: the page with the video, the waveform with line markers and the list of synced lines](docs/screenshot.png)
 
-## Requisiti
+## Features
 
-| Cosa | Per cosa | Note |
+- **Tap sync**: `Space` (or a click on the video) assigns the current time to the current line and moves on to the next one.
+- **Waveform** above the progress bar, with zoom (mouse wheel), panning (drag) and the line start markers drawn on top. Markers can be **dragged** for precise corrections.
+- **Text editing** line by line (double-click), adding and deleting lines, empty lines for instrumental breaks. Timings are kept. `Ctrl+Z` undoes.
+- **Slow playback** (0.5x, 0.75x) and an adjustable **tap lead** to compensate for reaction time.
+- **Configurable colors** (text, highlight, outline, next line) for bright or dark videos.
+- **Autosave** in the browser, **Save / Load project** as `.karaoke.json`, `.lrc` export.
+- **Final render** with ffmpeg: a video with the lyrics burned in, frame-accurate. Also works with an audio-only file (black background).
+
+## Requirements
+
+| What | Needed for | Notes |
 |---|---|---|
-| Browser Chrome o Edge | pagina di sincronizzazione | Firefox funziona ma salva i file sempre in Download |
-| Python 3 | render finale | usa solo la libreria standard (serve anche tkinter, incluso di default) |
-| ffmpeg | render finale | Windows: `winget install Gyan.FFmpeg` |
+| Chrome or Edge browser | sync page | Firefox works, but files always go to Downloads |
+| Python 3 | final render | standard library only (tkinter is also needed, included by default) |
+| ffmpeg | final render | Windows: `winget install Gyan.FFmpeg` |
 
-La pagina di sincronizzazione non richiede nulla. Python e ffmpeg servono solo per il render, che sta nella cartella [`render/`](render/): lì `installa_requisiti.bat` controlla e installa ciò che manca (istruzioni complete in [`render/LEGGIMI.md`](render/LEGGIMI.md)).
+The sync page needs nothing. Python and ffmpeg are only needed for the render, which lives in the [`render/`](render/) folder: `install_requirements.bat` there checks for them and installs whatever is missing (full instructions in [`render/README.md`](render/README.md)).
 
-Provato su Windows 11. Su altri sistemi la pagina dovrebbe funzionare uguale; `render.bat` è specifico di Windows, ma `render.py` si può lanciare ovunque.
+Tested on Windows 11. The page should work the same elsewhere; `render.bat` is Windows-only, but `render.py` can be run anywhere.
 
-## Come si usa
+## How to use
 
-### 1. Sincronizzare
+### 1. Sync
 
-1. Apri `karaoke.html` (doppio clic).
-2. **🎬 Video** → scegli il video o l'audio. **📄 Testo / LRC** → scegli il testo, una riga per verso (oppure incollalo con **✏️ Modifica testo**).
-3. Fai partire con `Invio` e premi `Spazio` quando parte ogni riga. Se sbagli: `⌫` annulla l'ultimo tap.
-4. Rifinisci: trascina i segnali arancioni sulla forma d'onda, oppure usa `[` e `]` (∓0,1 s) e i pulsanti di ogni riga.
-5. **💾 Salva lavoro** → salva `nomevideo.karaoke.json` accanto al video.
+1. Open `karaoke.html` (double-click).
+2. **🎬 Video** → choose the video or audio file. **📄 Lyrics / LRC** → choose the lyrics file, one line per verse (or paste it with **✏️ Edit text**).
+3. Start playback with `Enter` and press `Space` when each line begins. Made a mistake? `⌫` undoes the last tap.
+4. Fine-tune: drag the orange markers on the waveform, or use `[` and `]` (∓0.1 s) and the buttons on each line.
+5. **💾 Save project** → saves `videoname.karaoke.json` next to the video.
 
-> Per brani con voce e base separate, conviene sincronizzare ascoltando la traccia **solo voce** (l'attacco delle parole è molto più chiaro) e renderizzare poi con la base.
+> For tracks with separate vocals and backing track, it is easier to sync while listening to the **vocals-only** track (word onsets are much clearer) and then render with the backing track.
 
-### 2. Creare il video
+### 2. Create the video
 
-La prima volta esegui `render/installa_requisiti.bat` (installa Python e ffmpeg se mancano).
+The first time, run `render/install_requirements.bat` (installs Python and ffmpeg if missing).
 
-- **Doppio clic su `render/render.bat`**: compaiono tre finestre — video/audio, file dei tempi, dove salvare. Poi parte il rendering con la percentuale di avanzamento.
-- **Oppure** trascina il video su `render/render.bat`: cerca da solo `nomevideo.karaoke.json` (o `.lrc`) accanto al video o in Download.
-- **Oppure** da terminale:
+- **Double-click `render/render.bat`**: three dialogs appear — video/audio, timing file, where to save. Rendering then starts with a progress percentage.
+- **Or** drag the video onto `render/render.bat`: it looks for `videoname.karaoke.json` (or `.lrc`) next to the video or in Downloads.
+- **Or** from a terminal:
 
   ```bash
-  python render/render.py video.mp4 lavoro.karaoke.json uscita.mp4
+  python render/render.py video.mp4 project.karaoke.json output.mp4
   ```
 
-Il risultato è un mp4 (H.264 + AAC). I colori scelti nella pagina sono salvati nel `.karaoke.json` e vengono usati dal render.
+The result is an mp4 (H.264 + AAC). The colors chosen in the page are saved inside the `.karaoke.json` and used by the render.
 
-## Scorciatoie
+## Shortcuts
 
-| Tasto | Azione |
+| Key | Action |
 |---|---|
-| `Spazio` / clic sul video | segna la riga corrente |
-| `Invio` | play / pausa |
-| `⌫` | annulla l'ultimo tap (e torna indietro di 2 s) |
-| `Canc` | cancella il tempo della riga selezionata |
-| `←` `→` | ∓3 secondi |
-| `↑` `↓` | riga precedente / successiva |
-| `[` `]` | sposta la riga corrente di ∓0,1 s |
-| doppio clic su una riga | modifica il testo (`Invio` conferma, `Ctrl+Invio` aggiunge una riga sotto) |
-| `Ctrl+Z` | annulla le modifiche alle righe |
+| `Space` / click on video | mark the current line |
+| `Enter` | play / pause |
+| `⌫` | undo the last tap (and go back 2 s) |
+| `Del` | clear the time of the selected line |
+| `←` `→` | ∓3 seconds |
+| `↑` `↓` | previous / next line |
+| `[` `]` | move the current line by ∓0.1 s |
+| double-click a line | edit its text (`Enter` confirms, `Ctrl+Enter` adds a line below) |
+| `Ctrl+Z` | undo line edits |
 
-Sulla forma d'onda: rotella = zoom, trascina = sposta, clic = vai lì, trascina un segnale = sposta la riga, doppio clic = vista intera.
+On the waveform: wheel = zoom, drag = pan, click = seek, drag a marker = move that line, double-click = full view.
 
-## Formati
+## Tips
 
-- **`.karaoke.json`**: `{ "version": 2, "video": "nome", "style": { "text", "hi", "outline", "next" }, "lines": [ { "text": "...", "t": 12.34 } ] }`, con `t` in secondi (`null` se la riga non è ancora sincronizzata).
-- **`.lrc`**: formato standard `[mm:ss.xx]testo`. Contiene i tempi ma non i colori.
+### Split vocals and backing track with Ultimate Vocal Remover
 
-## Limiti noti
+The trick that makes syncing **much faster**: separate the song into vocals and instrumental with [Ultimate Vocal Remover](https://github.com/Anjok07/ultimatevocalremovergui) (a free program that uses AI models), then:
 
-- La forma d'onda decodifica il file nel browser: per file sopra circa 600 MB viene saltata (il resto funziona).
-- I video che il browser non sa riprodurre (alcuni `.mkv`, H.265) non si possono sincronizzare nella pagina; vanno convertiti in mp4 H.264 oppure si usa il solo audio.
-- Il render usa il font Arial e uno stile fisso (posizione in basso, dimensione proporzionale al video). Si cambia in `build_ass()` dentro `render/render.py`.
-- Il browser salva il lavoro automaticamente solo sul proprio computer: per spostarlo o tenerne una copia usa **Salva lavoro**.
+1. load the **vocals-only** track in the page: on the waveform every word stands out from the rest, so you can see and hear exactly where each line starts;
+2. mark the timings with `Space` and correct the markers on the waveform;
+3. for the final video, pick the **instrumental** track as the audio source in the render, using the same timing file.
 
-## Come è stato realizzato
+This way the original vocals are not mixed over the backing track, and the timings stay accurate because both stems have the same length. If both files come from the same separation, the `vocals.karaoke.json` file can be used for the instrumental too by selecting it by hand in the second render dialog.
 
-Questo progetto è stato scritto da un'**intelligenza artificiale (Claude, tramite Claude Code)** seguendo le richieste e i feedback di una persona: è stata la persona a decidere cosa serviva e come doveva comportarsi lo strumento, a provarlo su canzoni vere e a segnalare ogni problema, e l'IA ha scritto il codice e lo ha corretto di conseguenza. Il codice non è stato revisionato riga per riga da uno sviluppatore: è stato collaudato nell'uso, quindi è normale trovare spigoli. Segnalazioni e correzioni sono benvenute.
+### Other tips
 
-## Licenza
+- If your taps are consistently late or early, adjust **Tap lead**: the value is subtracted from every tap.
+- For tricky passages, slow down to **0.5x** and zoom in on the waveform.
+- An **empty line** (the ＋ button) clears the text from the screen: use it for instrumental breaks.
+- Save now and then with **💾 Save project**: the browser autosave is handy but stays on your computer.
 
-[PolyForm Noncommercial 1.0.0](LICENSE): puoi usare, copiare e modificare il programma liberamente per scopi **non commerciali** (uso personale, hobby, studio, associazioni senza scopo di lucro). L'uso commerciale non è consentito. Il software è fornito **così com'è, senza alcuna garanzia e senza responsabilità** dell'autore.
+## Formats
 
-Nota: non è una licenza open source in senso stretto, proprio perché vieta l'uso commerciale.
+- **`.karaoke.json`**: `{ "version": 2, "video": "name", "style": { "text", "hi", "outline", "next" }, "lines": [ { "text": "...", "t": 12.34 } ] }`, with `t` in seconds (`null` if the line is not synced yet).
+- **`.lrc`**: the standard `[mm:ss.xx]text` format. It holds timings but not colors.
+
+## Known limitations
+
+- The waveform decodes the file in the browser: above roughly 600 MB it is skipped (everything else still works).
+- Videos the browser cannot play (some `.mkv`, H.265) cannot be synced in the page; convert them to H.264 mp4 or use the audio only.
+- The render uses the Arial font and a fixed style (bottom position, size proportional to the video). Change it in `build_ass()` inside `render/render.py`.
+- The browser autosave only lives on your own computer: to move or back up your work, use **Save project**.
+
+## How it was made
+
+This project was written by an **AI (Claude, through Claude Code)** following the requests and feedback of a human: the person decided what was needed and how the tool should behave, tried it on real songs and reported every problem, and the AI wrote and fixed the code accordingly. The code has not been reviewed line by line by a developer: it was tested through use, so rough edges are to be expected. Reports and fixes are welcome.
+
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE): you may freely use, copy and modify the program for **noncommercial** purposes (personal use, hobby, study, non-profit organizations). Commercial use is not allowed. The software is provided **as is, with no warranty and no liability** on the part of the author.
+
+Note: this is not an open source license in the strict sense, precisely because it forbids commercial use.

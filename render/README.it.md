@@ -1,18 +1,22 @@
 # Render del video karaoke
 
+🇮🇹 Italiano · [🇬🇧 English](README.md)
+
+> I messaggi dei programmi sono in inglese; nella tabella in fondo c'è il significato.
+
 Questa cartella trasforma il lavoro fatto in `karaoke.html` (il file `.karaoke.json`) in un **video con le scritte incise**. Serve solo per l'ultimo passaggio: la sincronizzazione si fa nella pagina web, senza installare nulla.
 
 ## Contenuto
 
 | File | A cosa serve |
 |---|---|
-| `installa_requisiti.bat` | controlla Python e ffmpeg e li installa se mancano |
+| `install_requirements.bat` | controlla Python e ffmpeg e li installa se mancano |
 | `render.bat` | avvia il render (doppio clic, oppure trascina un video sopra) |
 | `render.py` | il programma vero e proprio, usato da `render.bat` |
 
 ## Installazione (una volta sola)
 
-1. Doppio clic su **`installa_requisiti.bat`**.
+1. Doppio clic su **`install_requirements.bat`**.
 2. Se Python o ffmpeg mancano, vengono installati con `winget` (incluso in Windows 10/11, non servono i diritti di amministratore).
 3. Se ha installato qualcosa, **chiudi la finestra** e apri `render.bat` in una finestra nuova, così Windows riconosce i programmi appena installati.
 
@@ -58,8 +62,8 @@ python render.py video.mp4 lavoro.karaoke.json uscita.mp4
 
 | Messaggio | Cosa fare |
 |---|---|
-| "Python non trovato" | esegui `installa_requisiti.bat`, poi riapri `render.bat` |
-| "ffmpeg non trovato" | esegui `installa_requisiti.bat`; se l'hai appena installato, chiudi e riapri la finestra |
-| "Non trovo il file dei tempi" | avvia `render.bat` con doppio clic e scegli il file a mano |
-| "Nessuna riga con tempo" | nel file non c'è nessuna riga sincronizzata: torna a `karaoke.html` |
+| "Python not found" (Python non trovato) | esegui `install_requirements.bat`, poi riapri `render.bat` |
+| "ffmpeg not found" (ffmpeg non trovato) | esegui `install_requirements.bat`; se l'hai appena installato, chiudi e riapri la finestra |
+| "Timing file not found" (file dei tempi non trovato) | avvia `render.bat` con doppio clic e scegli il file a mano |
+| "No line with a time in the file" (nessuna riga con tempo) | nel file non c'è nessuna riga sincronizzata: torna a `karaoke.html` |
 | il video finale ha le scritte illeggibili | cambia i colori in `karaoke.html`, salva di nuovo il lavoro e rifai il render |

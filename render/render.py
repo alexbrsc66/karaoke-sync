@@ -1,9 +1,9 @@
-"""Renderizza il karaoke: video/audio + tempi (.karaoke.json o .lrc) -> mp4 con scritte incise.
+"""Karaoke render: video/audio + timings (.karaoke.json or .lrc) -> mp4 with burned-in lyrics.
 
-Modi d'uso:
-  - doppio clic su render.bat            -> finestre per scegliere video, file dei tempi e dove salvare
-  - trascina un video su render.bat      -> cerca <video>.karaoke.json / .lrc accanto al video o in Download
-  - riga di comando:  python render.py video.mp4 [lavoro.karaoke.json|file.lrc] [output.mp4]
+Ways to use it:
+  - double-click render.bat          -> dialogs to pick the video, the timing file and where to save
+  - drag a video onto render.bat     -> looks for <video>.karaoke.json / .lrc next to the video or in Downloads
+  - command line:  python render.py video.mp4 [project.karaoke.json|file.lrc] [output.mp4]
 """
 import json, os, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
@@ -16,7 +16,7 @@ def find_tool(name):
     links = Path(os.environ.get('LOCALAPPDATA', '')) / 'Microsoft/WinGet/Links' / (name + '.exe')
     if links.exists():
         return str(links)
-    sys.exit(f'{name} non trovato. Installa con: winget install Gyan.FFmpeg')
+    sys.exit(f'{name} not found. Install it with: winget install Gyan.FFmpeg')
 
 
 def load_lines(path):
@@ -82,7 +82,7 @@ Style: Next,Arial,{small},{c_next},{c_next},{c_out},&H80000000,-1,0,0,0,100,100,
 Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 """
     ev = []
-    if lines and lines[0][1] > 0.5:  # anteprima della prima riga prima che parta
+    if lines and lines[0][1] > 0.5:  # preview of the first line before it starts
         ev.append(f'Dialogue: 0,{ts(0)},{ts(lines[0][1])},Next,,0,0,0,,{esc(lines[0][0])}')
     for i, (text, t) in enumerate(lines):
         nxt = lines[i + 1][1] if i + 1 < len(lines) else None
@@ -94,8 +94,8 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
     return head + '\n'.join(ev) + '\n'
 
 
-VIDEO_TYPES = [('Video e audio', '*.mp4 *.mkv *.mov *.avi *.webm *.m4v *.wav *.mp3 *.flac *.m4a *.aac *.ogg'), ('Tutti i file', '*.*')]
-PROJ_TYPES = [('Lavoro karaoke', '*.json *.lrc'), ('Tutti i file', '*.*')]
+VIDEO_TYPES = [('Video and audio', '*.mp4 *.mkv *.mov *.avi *.webm *.m4v *.wav *.mp3 *.flac *.m4a *.aac *.ogg'), ('All files', '*.*')]
+PROJ_TYPES = [('Karaoke project', '*.json *.lrc'), ('All files', '*.*')]
 
 
 def guess_project(video):
@@ -121,39 +121,39 @@ def main():
     if tk and interactive:
         root = tk.Tk(); root.withdraw(); root.attributes('-topmost', True)
 
-    # 1) video o audio
+    # 1) video or audio
     if args:
         video = Path(args[0]).resolve()
     else:
         if not root:
             sys.exit(__doc__)
-        f = fd.askopenfilename(title='1/3 - Scegli il VIDEO (o l\'audio) da usare', filetypes=VIDEO_TYPES)
+        f = fd.askopenfilename(title='1/3 - Choose the VIDEO (or audio) to use', filetypes=VIDEO_TYPES)
         if not f:
-            sys.exit('Annullato.')
+            sys.exit('Cancelled.')
         video = Path(f)
 
-    # 2) file dei tempi
+    # 2) timing file
     proj = Path(args[1]) if len(args) > 1 else guess_project(video)
     if root and (interactive or proj is None):
-        f = fd.askopenfilename(title='2/3 - Scegli il file dei tempi (.karaoke.json o .lrc)', filetypes=PROJ_TYPES,
+        f = fd.askopenfilename(title='2/3 - Choose the timing file (.karaoke.json or .lrc)', filetypes=PROJ_TYPES,
                                initialdir=str((proj.parent if proj else video.parent)),
                                initialfile=(proj.name if proj else ''))
         if not f:
-            sys.exit('Annullato.')
+            sys.exit('Cancelled.')
         proj = Path(f)
     if proj is None:
-        sys.exit('Non trovo il file dei tempi. Salvalo dal programma con "Salva lavoro" e avvia render.bat con doppio clic per sceglierlo.')
+        sys.exit('Timing file not found. Save it from the page with "Save project", then double-click render.bat to pick it.')
 
-    # 3) dove salvare
+    # 3) where to save
     if len(args) > 2:
         out = Path(args[2])
     else:
         out = video.with_name(video.stem + '.karaoke.mp4')
         if root:
-            f = fd.asksaveasfilename(title='3/3 - Dove salvo il video finito?', defaultextension='.mp4',
-                                     filetypes=[('Video MP4', '*.mp4')], initialdir=str(out.parent), initialfile=out.name)
+            f = fd.asksaveasfilename(title='3/3 - Where should the finished video be saved?', defaultextension='.mp4',
+                                     filetypes=[('MP4 video', '*.mp4')], initialdir=str(out.parent), initialfile=out.name)
             if not f:
-                sys.exit('Annullato.')
+                sys.exit('Cancelled.')
             out = Path(f)
 
     ffmpeg, ffprobe = find_tool('ffmpeg'), find_tool('ffprobe')
@@ -165,10 +165,10 @@ def main():
 
     lines = load_lines(proj)
     if not lines:
-        sys.exit('Nessuna riga con tempo nel file.')
-    print(f'Sorgente : {video.name} ({"solo audio, sfondo nero" if audio_only else "video"} {w}x{h}, {dur:.0f}s)')
-    print(f'Tempi    : {proj.name} ({len(lines)} righe sincronizzate)')
-    print(f'Uscita   : {out}')
+        sys.exit('No line with a time in the file.')
+    print(f'Source   : {video.name} ({"audio only, black background" if audio_only else "video"} {w}x{h}, {dur:.0f}s)')
+    print(f'Timings  : {proj.name} ({len(lines)} synced lines)')
+    print(f'Output   : {out}')
 
     with tempfile.TemporaryDirectory() as tmp:
         (Path(tmp) / 'sub.ass').write_text(build_ass(lines, w, h, dur, load_style(proj)), encoding='utf-8')
@@ -195,13 +195,13 @@ def main():
         pr.wait()
         print()
         if pr.returncode != 0:
-            msg = 'ffmpeg ha dato errore:\n' + '\n'.join(errors[-8:])
+            msg = 'ffmpeg reported an error:\n' + '\n'.join(errors[-8:])
             if root:
-                mb.showerror('Render fallito', msg)
+                mb.showerror('Render failed', msg)
             sys.exit(msg)
-    print('Fatto:', out)
+    print('Done:', out)
     if root:
-        mb.showinfo('Karaoke pronto', f'Video salvato in:\n{out}')
+        mb.showinfo('Karaoke ready', f'Video saved to:\n{out}')
         try:
             os.startfile(out.parent)
         except OSError:

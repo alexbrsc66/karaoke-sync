@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -55,44 +55,45 @@
 <body>
 <header>
   <button id="bV">🎬 Video</button><input id="fVideo" type="file" accept="video/*,audio/*,.mkv,.mp4,.webm,.mov,.mp3,.wav" hidden>
-  <button id="bT">📄 Testo / LRC</button><input id="fText" type="file" hidden>
-  <button id="bPaste">✏️ Modifica testo</button>
+  <button id="bT">📄 Lyrics / LRC</button><input id="fText" type="file" hidden>
+  <button id="bPaste">✏️ Edit text</button>
   <span id="status" style="flex:1;color:#ffb020;font-size:13px"></span>
-  <label class="opt">Velocità
+  <label class="opt">Speed
     <select id="rate"><option>0.5</option><option>0.75</option><option selected>1</option></select>
   </label>
-  <label class="opt">Anticipo tap (s) <input id="lead" type="number" step="0.05" value="0.15"></label>
-  <label class="opt">Testo <input id="cText" type="color" value="#ffffff"></label>
-  <label class="opt">Evidenz. <input id="cHi" type="color" value="#ffb020"></label>
-  <label class="opt">Contorno <input id="cOut" type="color" value="#000000"></label>
-  <label class="opt">Prossima <input id="cNext" type="color" value="#ffd27a"></label>
-  <button id="bProjSave">💾 Salva lavoro</button><button id="bProjLoad">📂 Carica lavoro</button>
-  <button id="bSave" class="primary">💾 Esporta .lrc</button>
-  <button id="bFull">⛶ Schermo intero</button>
+  <label class="opt">Tap lead (s) <input id="lead" type="number" step="0.05" value="0.15"></label>
+  <label class="opt">Text <input id="cText" type="color" value="#ffffff"></label>
+  <label class="opt">Highlight <input id="cHi" type="color" value="#ffb020"></label>
+  <label class="opt">Outline <input id="cOut" type="color" value="#000000"></label>
+  <label class="opt">Next line <input id="cNext" type="color" value="#ffd27a"></label>
+  <button id="bProjSave">💾 Save project</button><button id="bProjLoad">📂 Load project</button>
+  <button id="bSave" class="primary">💾 Export .lrc</button>
+  <button id="bFull">⛶ Fullscreen</button>
 </header>
 <main>
   <section id="left">
     <div id="stage">
-      <video id="v" controls="false"></video>
+      <video id="v"></video>
       <div id="overlay"><div id="cur"></div><div id="nxt"></div></div>
     </div>
-    <canvas id="wave" title="Rotella: zoom · trascina: sposta · clic: vai lì · trascina un segnale arancione: sposta la riga · doppio clic: tutto"></canvas>
+    <canvas id="wave" title="Wheel: zoom · drag: pan · click: seek · drag an orange marker: move that line · double-click: show all"></canvas>
     <div id="bar">
       <button id="bPlay">▶</button>
       <input id="seek" type="range" min="0" max="1000" value="0">
       <span id="time">0:00.0</span>
+      <input id="vol" type="range" min="0" max="1" step="0.05" value="1" title="Volume" style="width:80px">
     </div>
-    <button id="tap">TAP — segna la riga (Spazio)</button>
+    <button id="tap">TAP — mark the line (Space)</button>
     <div id="help">
-      <kbd>Spazio</kbd> segna riga corrente e passa alla successiva · <kbd>Invio</kbd> play/pausa ·
-      <kbd>⌫</kbd> annulla ultimo tap · <kbd>←</kbd><kbd>→</kbd> ±3s · <kbd>↑</kbd><kbd>↓</kbd> riga precedente/successiva ·
-      <kbd>[</kbd><kbd>]</kbd> sposta riga corrente ∓0.1s ·
-      doppio clic su una riga = modifica testo (<kbd>Invio</kbd> conferma, <kbd>Ctrl+Invio</kbd> conferma e aggiunge una riga sotto) · <kbd>Ctrl+Z</kbd> annulla
+      <kbd>Space</kbd> mark the current line and move on · <kbd>Enter</kbd> play/pause ·
+      <kbd>⌫</kbd> undo last tap · <kbd>←</kbd><kbd>→</kbd> ±3s · <kbd>↑</kbd><kbd>↓</kbd> previous/next line ·
+      <kbd>[</kbd><kbd>]</kbd> move current line ∓0.1s ·
+      double-click a line = edit text (<kbd>Enter</kbd> confirms, <kbd>Ctrl+Enter</kbd> confirms and adds a line below) · <kbd>Ctrl+Z</kbd> undo
     </div>
   </section>
   <section id="right">
-    <textarea id="lyricsEdit" placeholder="Incolla qui il testo, una riga per verso. Poi premi 'Applica'."></textarea>
-    <div id="rhead"><span id="count"></span><button id="bApply" style="display:none" class="primary">Applica testo</button><span><button id="bAddEnd">＋ Riga</button> <button id="bClear">Azzera tempi</button></span></div>
+    <textarea id="lyricsEdit" placeholder="Paste the lyrics here, one line per verse. Then press 'Apply text'."></textarea>
+    <div id="rhead"><span id="count"></span><button id="bApply" style="display:none" class="primary">Apply text</button><span><button id="bAddEnd">＋ Line</button> <button id="bClear">Clear times</button> <button id="bClearAll">Clear all</button></span></div>
     <div id="list"></div>
   </section>
 </main>
@@ -100,11 +101,11 @@
 <script>
 const $ = id => document.getElementById(id);
 const v = $('v');
-let lines = [];        // {text, t}  t = secondi o null
-let cursor = 0;        // riga che verrà segnata col prossimo tap
+let lines = [];        // {text, t}  t = seconds or null
+let cursor = 0;        // line that the next tap will mark
 let key = 'karaoke:default';
 
-// ---------- util ----------
+// ---------- utilities ----------
 const fmt = t => { if (t==null) return ''; const m=Math.floor(t/60), s=t-m*60; return m+':'+s.toFixed(2).padStart(5,'0'); };
 const parse = s => { s=s.trim(); if(!s) return null; const m=s.match(/^(\d+):(\d+(?:\.\d+)?)$/); return m? (+m[1])*60+ +m[2] : (isNaN(+s)?null:+s); };
 const sty = { text:'#ffffff', hi:'#ffb020', outline:'#000000', next:'#ffd27a' };
@@ -121,34 +122,34 @@ function applyStyle() {
 for (const k in pickers) $(pickers[k]).oninput = e => { sty[k] = e.target.value; try { localStorage.setItem('karaoke:style', JSON.stringify(sty)); } catch(_){} applyStyle(); };
 const save = () => { try { localStorage.setItem(key, JSON.stringify(lines)); localStorage.setItem('karaoke:last', JSON.stringify({key, lines})); } catch(e){} };
 
-// ---------- caricamento ----------
+// ---------- loading ----------
 const status = m => $('status').textContent = m;
 $('bV').onclick = () => $('fVideo').click();
 $('bT').onclick = () => $('fText').click();
 $('bProjLoad').onclick = () => $('fText').click();
-// salva chiedendo dove (Chrome/Edge); altrimenti download normale
+// ask where to save (Chrome/Edge); otherwise a normal download
 async function saveAs(fname, content, mime, ext, desc) {
   if (window.showSaveFilePicker) {
     try {
       const h = await showSaveFilePicker({ suggestedName:fname, id:'karaoke', types:[{description:desc, accept:{[mime]:[ext]}}] });
       const w = await h.createWritable(); await w.write(content); await w.close();
-      return status('Salvato: ' + h.name);
-    } catch(e) { if (e.name==='AbortError') return status('Salvataggio annullato'); }
+      return status('Saved: ' + h.name);
+    } catch(e) { if (e.name==='AbortError') return status('Save cancelled'); }
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([content], {type:mime})); a.download = fname; a.click();
-  status('Scaricato: ' + fname);
+  status('Downloaded: ' + fname);
 }
 $('bProjSave').onclick = () => {
   const name = key.split(':')[1] || 'karaoke';
-  saveAs(name.replace(/\.[^.]+$/,'') + '.karaoke.json', JSON.stringify({version:2, video:name, style:sty, lines}, null, 1), 'application/json', '.json', 'Lavoro karaoke');
+  saveAs(name.replace(/\.[^.]+$/,'') + '.karaoke.json', JSON.stringify({version:2, video:name, style:sty, lines}, null, 1), 'application/json', '.json', 'Karaoke project');
 };
-v.addEventListener('error', () => status('⚠ Il browser non riesce a leggere questo video (formato/codec non supportato). Prova mp4 H.264 o webm.'));
-v.addEventListener('loadedmetadata', () => status('Video caricato: ' + fmt(v.duration)));
-addEventListener('error', e => status('Errore: ' + e.message));
+v.addEventListener('error', () => status('⚠ The browser cannot read this video (unsupported format/codec). Try H.264 mp4 or webm.'));
+v.addEventListener('loadedmetadata', () => status('Video loaded: ' + fmt(v.duration)));
+addEventListener('error', e => status('Error: ' + e.message));
 $('fVideo').onchange = e => {
   const f = e.target.files[0]; if(!f) return;
-  status('Carico ' + f.name + '...');
+  status('Loading ' + f.name + '...');
   loadWave(f);
   v.src = URL.createObjectURL(f);
   key = 'karaoke:' + f.name + ':' + f.size;
@@ -156,14 +157,14 @@ $('fVideo').onchange = e => {
 };
 $('fText').onchange = async e => {
   const f = e.target.files[0]; if(!f) return;
-  setFromText(await f.text()); status('Testo caricato: ' + lines.length + ' righe');
+  setFromText(await f.text()); status('Lyrics loaded: ' + lines.length + ' lines');
 };
 function setFromText(txt) {
   if (/^\s*[\[{]/.test(txt)) { try {
     const j = JSON.parse(txt), arr = Array.isArray(j) ? j : j.lines;
     if (j.style) { Object.assign(sty, j.style); applyStyle(); }
     if (Array.isArray(arr)) { lines = arr.map(l=>({text:String(l.text), t:l.t==null?null:+l.t})); cursor = nextEmpty(); save(); render();
-      status('Lavoro caricato: ' + lines.length + ' righe' + (j.video ? ' — video originale: ' + j.video : '')); return; }
+      status('Project loaded: ' + lines.length + ' lines' + (j.video ? ' — original video: ' + j.video : '')); return; }
   } catch(e){} }
   const out = [];
   for (const raw of txt.split(/\r?\n/)) {
@@ -185,7 +186,7 @@ addEventListener('drop', async e => {
   }
 });
 
-// editor testo incollato
+// pasted-text editor
 $('bPaste').onclick = () => {
   const open = $('lyricsEdit').style.display==='block';
   if (!open) $('lyricsEdit').value = lines.map(l=>l.text).join('\n');
@@ -196,17 +197,29 @@ $('bPaste').onclick = () => {
 $('bApply').onclick = () => {
   snap();
   const texts = $('lyricsEdit').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean), old = lines;
-  if (texts.length === old.length) lines = texts.map((text,i)=>({text, t:old[i].t}));   // stesso numero di righe: tempi tenuti anche se cambi le parole
+  if (texts.length === old.length) lines = texts.map((text,i)=>({text, t:old[i].t}));   // same number of lines: times are kept even if the words change
   else { let p = 0; lines = texts.map(text => { let j=p; while (j<old.length && old[j].text!==text) j++; if (j<old.length) { p=j+1; return {text, t:old[j].t}; } return {text, t:null}; }); }
   cursor = nextEmpty(); save(); $('bPaste').onclick(); render();
 };
-let clearTimer=null;
-$('bClear').onclick = () => {
-  const b = $('bClear');
-  if (!clearTimer) { b.textContent='Sicuro? Clicca ancora'; b.style.background='#a33'; clearTimer=setTimeout(()=>{clearTimer=null;b.textContent='Azzera tempi';b.style.background='';},3000); return; }
-  clearTimeout(clearTimer); clearTimer=null; b.textContent='Azzera tempi'; b.style.background='';
-  snap(); lines.forEach(l=>l.t=null); cursor=0; save(); render();
-};
+// two-click confirmation (browser confirm() dialogs can be blocked)
+function confirmButton(id, label, action) {
+  const b = $(id); let timer = null;
+  b.onclick = () => {
+    if (!timer) { b.textContent = 'Sure? Click again'; b.style.background = '#a33'; timer = setTimeout(() => { timer = null; b.textContent = label; b.style.background = ''; }, 3000); return; }
+    clearTimeout(timer); timer = null; b.textContent = label; b.style.background = '';
+    snap(); action(); save(); render();
+  };
+}
+confirmButton('bClear', 'Clear times', () => { lines.forEach(l => l.t = null); cursor = 0; });
+confirmButton('bClearAll', 'Clear all', () => {
+  // start from scratch for a new song: lines, video/audio, waveform and the autosave of this song
+  try { localStorage.removeItem(key); localStorage.removeItem('karaoke:last'); } catch(e){}
+  lines = []; cursor = 0; editing = null; key = 'karaoke:default';
+  v.pause(); v.removeAttribute('src'); v.load();
+  peaks = null; wView = {t0:0, span:60};
+  $('fVideo').value = ''; $('fText').value = '';
+  status('Cleared — ready for a new song (Ctrl+Z restores the lines, not the video)');
+});
 
 // ---------- TAP ----------
 function tap() {
@@ -221,9 +234,9 @@ function undo() {
   save(); render();
 }
 $('tap').addEventListener('mousedown', e => { e.preventDefault(); tap(); });
-v.addEventListener('mousedown', e => { if (e.button===0) tap(); });   // click sul video = tap
+v.addEventListener('mousedown', e => { if (e.button===0) tap(); });   // click on the video = tap
 
-// ---------- tastiera ----------
+// ---------- keyboard ----------
 addEventListener('keydown', e => {
   if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) && e.target.type!=='range') return;
   if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z') { e.preventDefault(); undoEdit(); return; }
@@ -243,28 +256,28 @@ addEventListener('keydown', e => {
 function goto_(i) { cursor = Math.max(0, Math.min(lines.length, i)); render(); }
 function nudge(i, d) { const l=lines[i]; if(!l||l.t==null) return; l.t=Math.max(0,l.t+d); save(); render(); }
 
-// ---------- modifica righe ----------
+// ---------- line editing ----------
 let editing = null; const hist = [];
 function snap() { hist.push(JSON.stringify(lines)); if (hist.length>100) hist.shift(); }
-function undoEdit() { if (!hist.length) return status('Niente da annullare'); lines = JSON.parse(hist.pop()); editing=null; cursor=Math.min(cursor,lines.length); save(); render(); status('Annullato (Ctrl+Z)'); }
+function undoEdit() { if (!hist.length) return status('Nothing to undo'); lines = JSON.parse(hist.pop()); editing=null; cursor=Math.min(cursor,lines.length); save(); render(); status('Undone (Ctrl+Z)'); }
 function insertAfter(i) { snap(); lines.splice(i+1,0,{text:'',t:null}); cursor=i+1; editing=i+1; save(); render(); }
-function removeAt(i) { snap(); lines.splice(i,1); if (cursor>i) cursor--; cursor=Math.min(cursor,lines.length); editing=null; save(); render(); status('Riga eliminata — Ctrl+Z per annullare'); }
+function removeAt(i) { snap(); lines.splice(i,1); if (cursor>i) cursor--; cursor=Math.min(cursor,lines.length); editing=null; save(); render(); status('Line deleted — Ctrl+Z to undo'); }
 $('bAddEnd').onclick = () => insertAfter(lines.length-1);
 
-// ---------- lista ----------
+// ---------- list ----------
 function render() {
-  $('count').textContent = `${lines.filter(l=>l.t!=null).length}/${lines.length} righe sincronizzate`;
+  $('count').textContent = `${lines.filter(l=>l.t!=null).length}/${lines.length} lines synced`;
   const L = $('list'); L.innerHTML = '';
   lines.forEach((l,i) => {
     const r = document.createElement('div'); r.className='row'; r.dataset.i=i;
     r.innerHTML = `<span class="n">${i+1}</span><input class="t ${l.t==null?'empty':''}" value="${fmt(l.t)}" placeholder="--:--.--"><span class="txt"></span>
-      <span class="acts"><button title="Imposta al tempo attuale">⏱</button><button title="-0.1s">−</button><button title="+0.1s">+</button><button title="Cancella il tap">✕</button><button class="sep" title="Modifica il testo (doppio clic sulla riga)">✎</button><button title="Inserisci una riga sotto">＋</button><button title="Elimina la riga">🗑</button></span>`;
+      <span class="acts"><button title="Set to the current time">⏱</button><button title="-0.1s">−</button><button title="+0.1s">+</button><button title="Clear this tap">✕</button><button class="sep" title="Edit the text (or double-click the line)">✎</button><button title="Insert a line below">＋</button><button title="Delete the line">🗑</button></span>`;
     const tx = r.querySelector('.txt');
-    tx.textContent = l.text || '(riga vuota)'; if (!l.text) tx.classList.add('blank');
+    tx.textContent = l.text || '(empty line)'; if (!l.text) tx.classList.add('blank');
     tx.onclick = () => { cursor=i; if(l.t!=null) v.currentTime=Math.max(0,l.t-0.5); render(); };
     tx.ondblclick = () => { editing=i; render(); };
     if (editing === i) {
-      const ed = document.createElement('input'); ed.className='edit'; ed.value = l.text; ed.placeholder='Testo della riga';
+      const ed = document.createElement('input'); ed.className='edit'; ed.value = l.text; ed.placeholder='Line text';
       let done = false;
       const commit = (next) => { if (done) return; done = true; const val = ed.value.trim(); if (val !== l.text) { snap(); l.text = val; } editing=null; save();
         if (next) insertAfter(i); else render(); };
@@ -289,6 +302,14 @@ function render() {
 }
 let lastLive = -2;
 function liveIndex(t) { let k=-1; for (let i=0;i<lines.length;i++) if (lines[i].t!=null && lines[i].t<=t) k = i; return k; }
+// shrink the big line so it always fits inside the video area
+function fitCur() {
+  const cur = $('cur'), w = cur.querySelector('.w'); cur.style.fontSize = '';
+  if (!w) return;
+  const max = $('stage').clientWidth * 0.9;
+  if (w.offsetWidth > max) cur.style.fontSize = (parseFloat(getComputedStyle(cur).fontSize) * max / w.offsetWidth) + 'px';
+}
+addEventListener('resize', fitCur);
 function mark(force) {
   const k = liveIndex(v.currentTime);
   if (!force && k===lastLive && false) return;
@@ -302,6 +323,7 @@ function mark(force) {
   const cur = $('cur'); cur.textContent = '';
   if (k>=0) { const w=document.createElement('span'); w.className='w'; w.textContent=lines[k].text;
     const h=document.createElement('span'); h.className='h'; h.textContent=lines[k].text; h.style.color=sty.hi; w.appendChild(h); cur.appendChild(w); }
+  fitCur();
   $('nxt').textContent = k+1<lines.length ? lines[k+1].text : '';
   const el = document.querySelector('.row.cursor') || document.querySelector('.row.live');
   if (el && (force || !v.paused)) el.scrollIntoView({block:'center', behavior:'smooth'});
@@ -311,6 +333,7 @@ function mark(force) {
 $('bPlay').onclick = () => v.paused ? v.play() : v.pause();
 v.addEventListener('play',  ()=>$('bPlay').textContent='⏸');
 v.addEventListener('pause', ()=>$('bPlay').textContent='▶');
+$('vol').oninput = () => v.volume = +$('vol').value;
 $('rate').onchange = () => v.playbackRate = +$('rate').value;
 v.addEventListener('loadedmetadata', () => v.playbackRate = +$('rate').value);
 $('seek').oninput = () => { if (v.duration) v.currentTime = $('seek').value/1000*v.duration; };
@@ -318,16 +341,17 @@ let lastK=-2;
 function wipe() {
   const h = document.querySelector('#cur .h'); if (!h) return;
   const t = v.currentTime, k = liveIndex(t), l = lines[k];
+  if (!l) return;
   let end = l.t + 6; const nx = lines.slice(k+1).find(x=>x.t!=null); if (nx) end = Math.min(end, nx.t);
   h.style.width = (100*Math.max(0, Math.min(1, (t-l.t)/Math.max(0.2,end-l.t)))) + '%';
 }
-// ---------- forma d'onda ----------
+// ---------- waveform ----------
 const wave = $('wave'), wctx = wave.getContext('2d');
-const PPS = 200;                       // campioni di picco al secondo
+const PPS = 200;                       // peak samples per second
 let peaks = null, wView = {t0:0, span:60}, wDrag = null;
 async function loadWave(f) {
   peaks = null; drawWave();
-  if (f.size > 600e6) return status('File troppo grande per la forma d’onda (video ok).');
+  if (f.size > 600e6) return status('File too large for the waveform (video still works).');
   try {
     const ac = new (window.AudioContext||window.webkitAudioContext)();
     const buf = await ac.decodeAudioData(await f.arrayBuffer()); ac.close && ac.close();
@@ -341,14 +365,14 @@ async function loadWave(f) {
     }
     peaks = {mn, mx, dur:buf.duration, gain: g>0 ? 1/g : 1};
     wView = {t0:0, span:buf.duration}; drawWave();
-  } catch(e) { status('Forma d’onda non disponibile per questo file.'); }
+  } catch(e) { status('Waveform not available for this file.'); }
 }
 function drawWave() {
   const dpr = devicePixelRatio||1, W = wave.clientWidth, H = wave.clientHeight;
   if (!W) return;
   if (wave.width !== Math.round(W*dpr)) { wave.width = Math.round(W*dpr); wave.height = Math.round(H*dpr); }
   wctx.setTransform(dpr,0,0,dpr,0,0); wctx.clearRect(0,0,W,H);
-  if (!peaks) { wctx.fillStyle='#8b93a0'; wctx.font='13px system-ui'; wctx.fillText('La forma d’onda appare qui dopo aver caricato un video/audio', 12, H/2+4); return; }
+  if (!peaks) { wctx.fillStyle='#8b93a0'; wctx.font='13px system-ui'; wctx.fillText('The waveform appears here once a video/audio file is loaded', 12, H/2+4); return; }
   const {t0, span} = wView, mid = H/2, amp = (H/2-12)*peaks.gain, now = v.currentTime;
   for (let x=0;x<W;x++) {
     const ta = t0 + x/W*span, i0 = Math.floor(ta*PPS), i1 = Math.max(i0+1, Math.floor((ta+span/W)*PPS));
@@ -357,11 +381,11 @@ function drawWave() {
     wctx.fillStyle = ta < now ? '#6fa8ff' : '#43628f';
     wctx.fillRect(x, mid-hi*amp, 1, Math.max(1,(hi-lo)*amp));
   }
-  // scala dei tempi
+  // time scale
   const steps=[.1,.2,.5,1,2,5,10,15,30,60,120,300]; const st = steps.find(q=>span/q<=10)||600;
   wctx.fillStyle='#8b93a0'; wctx.font='10px system-ui'; wctx.strokeStyle='#2b3038'; wctx.lineWidth=1;
   for (let t=Math.ceil(t0/st)*st; t<t0+span; t+=st) { const x=(t-t0)/span*W; wctx.beginPath(); wctx.moveTo(x+.5,H-12); wctx.lineTo(x+.5,H); wctx.stroke(); wctx.fillText(fmt(t), x+3, H-2); }
-  // segnali delle righe
+  // line markers
   lines.forEach((l,i) => {
     if (l.t==null || l.t<t0 || l.t>t0+span) return;
     const x = (l.t-t0)/span*W, c = i===cursor;
@@ -421,15 +445,15 @@ setInterval(() => {
   if (k!==lastK) { lastK=k; mark(false); }
 }, 50);
 
-// ---------- esporta ----------
+// ---------- export ----------
 $('bSave').onclick = () => {
   const lrc = lines.filter(l=>l.t!=null).map(l => { const m=Math.floor(l.t/60), s=(l.t-m*60); return `[${String(m).padStart(2,'0')}:${s.toFixed(2).padStart(5,'0')}]${l.text}`; }).join('\n');
-  saveAs((key.split(':')[1]||'karaoke').replace(/\.[^.]+$/,'') + '.lrc', lrc, 'text/plain', '.lrc', 'Testo sincronizzato LRC');
+  saveAs((key.split(':')[1]||'karaoke').replace(/\.[^.]+$/,'') + '.lrc', lrc, 'text/plain', '.lrc', 'Synced lyrics (LRC)');
 };
 $('bFull').onclick = () => $('stage').requestFullscreen?.();
 try { const last = JSON.parse(localStorage.getItem('karaoke:last')||'null');
   if (last && last.lines && last.lines.length) { lines = last.lines; key = last.key; cursor = nextEmpty();
-    status('Ripristinato ultimo lavoro (' + lines.length + ' righe). Ricarica il video per continuare.'); } } catch(e){}
+    status('Restored your last project (' + lines.length + ' lines). Load the video again to continue.'); } } catch(e){}
 applyStyle();
 render();
 </script>
