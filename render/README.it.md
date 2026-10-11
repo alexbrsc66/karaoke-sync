@@ -72,6 +72,7 @@ Per le scritte viene usato il font Arial, o quello che il sistema sceglie se man
 - Se come sorgente scegli un file **solo audio** (`.wav`, `.mp3`…), il video avrà lo sfondo nero.
 - I colori scelti nella pagina sono salvati dentro il `.karaoke.json` e vengono usati dal render. Un file `.lrc` non li contiene: si usano i colori predefiniti (bianco, arancione, contorno nero).
 - Per sincronizzare conviene ascoltare la traccia con la sola voce; per il video finale si può poi scegliere la base strumentale come sorgente, purché il file dei tempi sia quello giusto.
+- Il colore scorre su ogni riga parola per parola, in proporzione alla lunghezza delle parole, dall'inizio della riga alla fine del canto (il segnale blu nella pagina). Le righe che vanno a capo su due righe riempiono quindi prima la prima riga e poi la seconda. Senza un segnale di fine copre l'intervallo fino alla riga successiva, al massimo 6 s.
 - Il risultato è un mp4 H.264 + AAC. Il rendering richiede più o meno il tempo di una breve codifica video: dipende dalla durata e dal computer.
 
 ## Problemi comuni

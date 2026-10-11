@@ -72,7 +72,7 @@ The result is an mp4 (H.264 + AAC). The colors chosen in the page are saved insi
 | double-click a line | edit its text (`Enter` confirms, `Ctrl+Enter` adds a line below) |
 | `Ctrl+Z` | undo line edits |
 
-On the waveform: wheel = zoom, drag = pan, click = seek, drag a marker = move that line, double-click = full view.
+On the waveform: wheel = zoom, drag = pan, click = seek, drag an orange marker = move the start of that line, drag a blue marker = move the end of its singing, double-click = full view.
 
 ## Tips
 
@@ -93,6 +93,8 @@ Paste the original lyrics first, switch to **Original** and type them in, then s
 ### Making the colour sweep follow the voice
 
 After syncing the starts, press **⇥ Auto ends** (best with the vocals-only track loaded): it reads the waveform and places a blue end marker where each line stops being sung. Check them while zooming in, and drag any that is off. Without a manual correction, a second click only fills the missing ones; **Shift+click** recalculates all of them. Lines without an end marker keep the old behaviour.
+
+To change one end by hand, zoom in with the wheel and drag its blue marker (`⟧` plus the line number); the video then jumps 1 s before the new end so you can listen to it with `Enter`. `Ctrl+Z` undoes a drag. Save the project afterwards: the render reads the ends from the `.karaoke.json`, not from an `.lrc`.
 
 ### Other tips
 

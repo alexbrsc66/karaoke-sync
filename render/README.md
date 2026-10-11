@@ -70,6 +70,7 @@ The lyrics use the Arial font, falling back to whatever font the system picks if
 - If the source is an **audio-only** file (`.wav`, `.mp3`…), the video gets a black background.
 - The colors chosen in the page are stored inside the `.karaoke.json` and used by the render. An `.lrc` file does not contain them: default colors apply (white, orange, black outline).
 - To sync it is easier to listen to the vocals-only track; for the final video you can then choose the instrumental as the source, as long as the timing file is the right one.
+- The colour runs through each line word by word, in proportion to the length of the words, from the start of the line to the end of its singing (the blue marker in the page). Lines that wrap onto two rows therefore fill the first row and then the second. Without an end marker it spans the gap to the next line, at most 6 s.
 - The result is an H.264 + AAC mp4. Rendering takes roughly the time of a short video encode, depending on length and on the computer.
 
 ## Common problems

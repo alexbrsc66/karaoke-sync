@@ -74,7 +74,7 @@ Il risultato è un mp4 (H.264 + AAC). I colori scelti nella pagina sono salvati 
 | doppio clic su una riga | modifica il testo (`Invio` conferma, `Ctrl+Invio` aggiunge una riga sotto) |
 | `Ctrl+Z` | annulla le modifiche alle righe |
 
-Sulla forma d'onda: rotella = zoom, trascina = sposta, clic = vai lì, trascina un segnale = sposta la riga, doppio clic = vista intera.
+Sulla forma d'onda: rotella = zoom, trascina = sposta, clic = vai lì, trascina un segnale arancione = sposta l'inizio di quella riga, trascina un segnale blu = sposta la fine del canto, doppio clic = vista intera.
 
 ## Suggerimenti
 
@@ -95,6 +95,8 @@ Incolla prima il testo originale, passa a **Original** e scrivilo, poi torna a *
 ### Far seguire la voce alla barra di colore
 
 Dopo aver sincronizzato gli inizi premi **⇥ Auto ends** (meglio con la traccia di sola voce): legge la forma d'onda e mette un segnale blu di fine dove ogni riga smette di essere cantata. Controllali con lo zoom e trascina quelli sbagliati. Un secondo clic riempie solo quelli mancanti, quindi le correzioni a mano restano; con **Maiusc+clic** li ricalcola tutti. Le righe senza segnale di fine mantengono il comportamento di prima.
+
+Per correggere una fine a mano, ingrandisci con la rotella e trascina il suo segnale blu (`⟧` con il numero della riga): il video salta 1 s prima della nuova fine, così puoi ascoltarla con `Invio`. `Ctrl+Z` annulla un trascinamento. Salva poi il progetto: il render legge le fini dal `.karaoke.json`, non da un `.lrc`.
 
 ### Altri consigli
 
