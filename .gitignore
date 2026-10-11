@@ -17,3 +17,6 @@ __pycache__/
 *.pyc
 Thumbs.db
 desktop.ini
+
+# note locali per Claude, non pubblicare
+CLAUDE.md
