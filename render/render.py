@@ -26,14 +26,14 @@ def load_lines(path):
             j = json.loads(txt)
             arr = j['lines'] if isinstance(j, dict) else j
             orig = isinstance(j, dict) and j.get('mode') == 'orig'   # page set to "Showing: Original"
-            return [((l.get('orig') or l['text']) if orig else l['text'], l['t']) for l in arr if l.get('t') is not None]
+            return [((l.get('orig') or l['text']) if orig else l['text'], l['t'], l.get('e')) for l in arr if l.get('t') is not None]
         except (ValueError, KeyError):
             pass
     out = []
     for raw in txt.splitlines():
         m = re.match(r'\s*\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)', raw)
         if m:
-            out.append((m.group(3), int(m.group(1)) * 60 + float(m.group(2))))
+            out.append((m.group(3), int(m.group(1)) * 60 + float(m.group(2)), None))
     return out
 
 
@@ -85,10 +85,13 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
     ev = []
     if lines and lines[0][1] > 0.5:  # preview of the first line before it starts
         ev.append(f'Dialogue: 0,{ts(0)},{ts(lines[0][1])},Next,,0,0,0,,{esc(lines[0][0])}')
-    for i, (text, t) in enumerate(lines):
+    for i, (text, t, e) in enumerate(lines):
         nxt = lines[i + 1][1] if i + 1 < len(lines) else None
-        end = nxt if nxt is not None else min(t + 6, dur)
-        sweep = min(end, t + 6) - t
+        has_e = e is not None and e > t
+        # the line stays on screen until the next one starts (the last one a little after it is sung)
+        end = nxt if nxt is not None else min(max(t + 6, (e + 1) if has_e else 0), dur)
+        # the colour sweep follows the real singing (e), else it spans the gap to the next line, max 6 s
+        sweep = (min(e, end) if has_e else min(end, t + 6)) - t
         ev.append(f'Dialogue: 0,{ts(t)},{ts(end)},Cur,,0,0,0,,{{\\kf{max(1, round(sweep * 100))}}}{esc(text)}')
         if nxt is not None:
             ev.append(f'Dialogue: 0,{ts(t)},{ts(end)},Next,,0,0,0,,{esc(lines[i + 1][0])}')

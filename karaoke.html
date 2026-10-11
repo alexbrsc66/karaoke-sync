@@ -95,7 +95,7 @@
   </section>
   <section id="right">
     <textarea id="lyricsEdit" placeholder="Paste the lyrics here, one line per verse. Then press 'Apply text'."></textarea>
-    <div id="rhead"><span id="count"></span><button id="bApply" style="display:none" class="primary">Apply text</button><span><button id="bAddEnd">＋ Line</button> <button id="bClear">Clear times</button> <button id="bClearAll">Clear all</button></span></div>
+    <div id="rhead"><span id="count"></span><button id="bApply" style="display:none" class="primary">Apply text</button><span><button id="bEnds" title="Find where the singing of each line ends, from the waveform. Fills the missing ones; Shift+click recalculates all.">⇥ Auto ends</button> <button id="bAddEnd">＋ Line</button> <button id="bClear">Clear times</button> <button id="bClearAll">Clear all</button></span></div>
     <div id="list"></div>
   </section>
 </main>
@@ -174,7 +174,7 @@ function setFromText(txt) {
     const j = JSON.parse(txt), arr = Array.isArray(j) ? j : j.lines;
     if (j.style) { Object.assign(sty, j.style); applyStyle(); }
     if (Array.isArray(arr)) { if (j.mode==='orig' || j.mode==='cover') mode = j.mode;
-      lines = arr.map(l=>({text:String(l.text), orig:String(l.orig||''), t:l.t==null?null:+l.t})); cursor = nextEmpty(); save(); render();
+      lines = arr.map(l=>({text:String(l.text), orig:String(l.orig||''), t:l.t==null?null:+l.t, e:l.e==null?null:+l.e})); cursor = nextEmpty(); save(); render();
       status('Project loaded: ' + lines.length + ' lines' + (j.video ? ' — original video: ' + j.video : '')); return; }
   } catch(e){} }
   const out = [];
@@ -211,7 +211,7 @@ $('bApply').onclick = () => {
   const F = FIELD(), O = OTHER(), old = lines;
   const texts = $('lyricsEdit').value.split(/\r?\n/).map(x=>x.trim());
   while (texts.length && !texts[texts.length-1]) texts.pop();           // only trailing blank lines are dropped
-  const mk = (txt, src) => { const n = {text:'', orig:'', t: src ? src.t : null}; n[F] = txt; n[O] = src ? (src[O]||'') : ''; return n; };
+  const mk = (txt, src) => { const n = {text:'', orig:'', t: src ? src.t : null, e: src ? (src.e ?? null) : null}; n[F] = txt; n[O] = src ? (src[O]||'') : ''; return n; };
   if (texts.length === old.length) lines = texts.map((txt,i) => mk(txt, old[i]));   // same number of lines: times (and the other text) are kept
   else { let p = 0; lines = texts.map(txt => { let j=p; while (j<old.length && shown(old[j])!==txt) j++; if (j<old.length) { p=j+1; return mk(txt, old[j]); } return mk(txt, null); }); }
   cursor = nextEmpty(); save(); $('bPaste').onclick(); render();
@@ -225,7 +225,7 @@ function confirmButton(id, label, action) {
     snap(); action(); save(); render();
   };
 }
-confirmButton('bClear', 'Clear times', () => { lines.forEach(l => l.t = null); cursor = 0; });
+confirmButton('bClear', 'Clear times', () => { lines.forEach(l => { l.t = null; l.e = null; }); cursor = 0; });
 confirmButton('bClearAll', 'Clear all', () => {
   // start from scratch for a new song: lines, video/audio, waveform and the autosave of this song
   try { localStorage.removeItem(key); localStorage.removeItem('karaoke:last'); } catch(e){}
@@ -258,7 +258,7 @@ addEventListener('keydown', e => {
   switch (e.key) {
     case ' ': e.preventDefault(); if(!e.repeat) tap(); break;
     case 'Enter': e.preventDefault(); v.paused ? v.play() : v.pause(); break;
-    case 'Delete': { const i=Math.min(cursor,lines.length-1); if(lines[i]){ lines[i].t=null; save(); render(); } break; }
+    case 'Delete': { const i=Math.min(cursor,lines.length-1); if(lines[i]){ lines[i].t=null; lines[i].e=null; save(); render(); } break; }
     case 'Backspace': e.preventDefault(); undo(); break;
     case 'ArrowLeft': e.preventDefault(); v.currentTime -= 3; break;
     case 'ArrowRight': e.preventDefault(); v.currentTime += 3; break;
@@ -275,7 +275,7 @@ function nudge(i, d) { const l=lines[i]; if(!l||l.t==null) return; l.t=Math.max(
 let editing = null; const hist = [];
 function snap() { hist.push(JSON.stringify(lines)); if (hist.length>100) hist.shift(); }
 function undoEdit() { if (!hist.length) return status('Nothing to undo'); lines = JSON.parse(hist.pop()); editing=null; cursor=Math.min(cursor,lines.length); save(); render(); status('Undone (Ctrl+Z)'); }
-function insertAfter(i) { snap(); lines.splice(i+1,0,{text:'',orig:'',t:null}); cursor=i+1; editing=i+1; save(); render(); }
+function insertAfter(i) { snap(); lines.splice(i+1,0,{text:'',orig:'',t:null,e:null}); cursor=i+1; editing=i+1; save(); render(); }
 function removeAt(i) { snap(); lines.splice(i,1); if (cursor>i) cursor--; cursor=Math.min(cursor,lines.length); editing=null; save(); render(); status('Line deleted — Ctrl+Z to undo'); }
 $('bAddEnd').onclick = () => insertAfter(lines.length-1);
 
@@ -312,7 +312,7 @@ function render() {
     bNow.onclick = () => { l.t=v.currentTime; save(); render(); };
     bMinus.onclick = () => nudge(i,-0.1);
     bPlus.onclick = () => nudge(i,+0.1);
-    bDel.onclick = () => { l.t=null; cursor=i; save(); render(); };
+    bDel.onclick = () => { l.t=null; l.e=null; cursor=i; save(); render(); };
     L.appendChild(r);
   });
   mark(true);
@@ -355,13 +355,44 @@ $('rate').onchange = () => v.playbackRate = +$('rate').value;
 v.addEventListener('loadedmetadata', () => v.playbackRate = +$('rate').value);
 $('seek').oninput = () => { if (v.duration) v.currentTime = $('seek').value/1000*v.duration; };
 let lastK=-2;
+// where the colour sweep of line k finishes: the marked end of the singing, else until the next line (max 6 s)
+function lineEnd(k) {
+  const l = lines[k];
+  if (l.e != null && l.e > l.t) return l.e;
+  let end = l.t + 6; const nx = lines.slice(k+1).find(x=>x.t!=null); if (nx) end = Math.min(end, nx.t);
+  return end;
+}
 function wipe() {
   const h = document.querySelector('#cur .h'); if (!h) return;
   const t = v.currentTime, k = liveIndex(t), l = lines[k];
   if (!l) return;
-  let end = l.t + 6; const nx = lines.slice(k+1).find(x=>x.t!=null); if (nx) end = Math.min(end, nx.t);
+  const end = lineEnd(k);
   h.style.width = (100*Math.max(0, Math.min(1, (t-l.t)/Math.max(0.2,end-l.t)))) + '%';
 }
+// ---------- end of the singing ----------
+function computeEnds(all) {
+  if (!peaks) return status('Load the audio first: the end times are read from the waveform.');
+  snap();
+  const n = peaks.mn.length, env = new Float32Array(n), sm = new Float32Array(n), R = 6;   // R = 6 buckets = 30 ms
+  for (let i=0;i<n;i++) env[i] = Math.max(peaks.mx[i], -peaks.mn[i]);
+  for (let i=0;i<n;i++) { let m=0; for (let j=Math.max(0,i-R); j<=i; j++) if (env[j]>m) m=env[j]; sm[i]=m; }   // looks backwards only, so the next line's attack is not seen early
+  const thr = 0.05 / peaks.gain;                       // 5 % of the loudest peak counts as silence
+  const idx = lines.map((l,i)=>i).filter(i=>lines[i].t!=null).sort((a,b)=>lines[a].t-lines[b].t);
+  let done = 0;
+  idx.forEach((i,pos) => {
+    const l = lines[i]; if (!all && l.e!=null && l.e>l.t) return;
+    const limit = pos+1<idx.length ? lines[idx[pos+1]].t : peaks.dur;
+    const lo = Math.floor(l.t*PPS); let k = Math.min(n-1, Math.floor((limit-0.1)*PPS)-1);   // ignore the last 100 ms before the next line
+    while (k>lo && sm[k]<thr) k--;                     // walk back from the next line to the last sound
+    let e = (k+1)/PPS + 0.08;
+    if (e < l.t+0.3) e = Math.min(limit, l.t+1);       // nothing found: assume 1 s
+    l.e = Math.min(e, limit); done++;
+  });
+  save(); render();
+  status(done + ' end time' + (done===1?'':'s') + ' set (blue markers on the waveform, drag to fix) — Ctrl+Z to undo');
+}
+$('bEnds').onclick = e => computeEnds(e.shiftKey);
+
 // ---------- waveform ----------
 const wave = $('wave'), wctx = wave.getContext('2d');
 const PPS = 200;                       // peak samples per second
@@ -410,27 +441,43 @@ function drawWave() {
     wctx.beginPath(); wctx.moveTo(x+.5,0); wctx.lineTo(x+.5,H-12); wctx.stroke();
     wctx.fillStyle = '#ffb020'; wctx.font='bold 10px system-ui'; wctx.fillText(String(i+1), x+3, 10);
   });
+  lines.forEach((l,i) => {                       // end of the singing (blue)
+    if (l.t==null || l.e==null || l.e<=l.t || l.e<t0 || l.e>t0+span) return;
+    const x = (l.e-t0)/span*W;
+    wctx.strokeStyle = '#5ec8ff'; wctx.lineWidth = 1; wctx.setLineDash([3,3]);
+    wctx.beginPath(); wctx.moveTo(x+.5,0); wctx.lineTo(x+.5,H-12); wctx.stroke(); wctx.setLineDash([]);
+    wctx.fillStyle = '#5ec8ff'; wctx.font='bold 10px system-ui'; wctx.fillText('⟧'+(i+1), x-18, 22);
+  });
   const px = (now-t0)/span*W;
   if (px>=0 && px<=W) { wctx.strokeStyle='#ff4d4d'; wctx.lineWidth=2; wctx.beginPath(); wctx.moveTo(px,0); wctx.lineTo(px,H); wctx.stroke(); }
 }
 const wT = x => wView.t0 + x/wave.clientWidth*wView.span;
 const clampView = () => { if(!peaks) return; wView.span = Math.max(0.5, Math.min(peaks.dur, wView.span)); wView.t0 = Math.max(0, Math.min(peaks.dur-wView.span, wView.t0)); };
-function markerAt(x) {
-  let best=-1, bd=7;
-  lines.forEach((l,i) => { if (l.t==null) return; const d=Math.abs((l.t-wView.t0)/wView.span*wave.clientWidth - x); if (d<bd) { bd=d; best=i; } });
+function markerAt(x) {                      // nearest start or end marker within 7 px
+  let best = null, bd = 7;
+  const px = t => (t-wView.t0)/wView.span*wave.clientWidth;
+  lines.forEach((l,i) => {
+    if (l.t==null) return;
+    let d = Math.abs(px(l.t) - x); if (d<bd) { bd=d; best={m:i, end:false}; }
+    if (l.e!=null && l.e>l.t) { d = Math.abs(px(l.e) - x); if (d<bd) { bd=d; best={m:i, end:true}; } }
+  });
   return best;
 }
 wave.addEventListener('mousedown', e => {
   if (!peaks) return;
-  const m = markerAt(e.offsetX);
-  wDrag = { m, x0:e.offsetX, t0:wView.t0, moved:false };
+  const hit = markerAt(e.offsetX);
+  wDrag = { m: hit ? hit.m : -1, end: hit ? hit.end : false, x0:e.offsetX, t0:wView.t0, moved:false };
 });
 addEventListener('mousemove', e => {
   if (!wDrag) return;
   const x = e.clientX - wave.getBoundingClientRect().left;
   if (Math.abs(x-wDrag.x0)>3) wDrag.moved = true;
   if (!wDrag.moved) return;
-  if (wDrag.m>=0) { lines[wDrag.m].t = Math.max(0, Math.min(peaks.dur, wT(x))); }
+  if (wDrag.m>=0) {
+    if (!wDrag.snapped) { snap(); wDrag.snapped = true; }   // one undo step per drag
+    const l = lines[wDrag.m], tt = Math.max(0, Math.min(peaks.dur, wT(x)));
+    if (wDrag.end) l.e = Math.max(l.t + 0.1, tt); else l.t = tt;
+  }
   else { wView.t0 = wDrag.t0 - (x-wDrag.x0)/wave.clientWidth*wView.span; clampView(); }
   drawWave();
 });
@@ -438,7 +485,7 @@ addEventListener('mouseup', e => {
   if (!wDrag) return;
   const d = wDrag; wDrag = null;
   const x = e.clientX - wave.getBoundingClientRect().left;
-  if (d.m>=0) { cursor = d.m; if (d.moved) { save(); } v.currentTime = Math.max(0, lines[d.m].t - 0.3); render(); }
+  if (d.m>=0) { cursor = d.m; if (d.moved) { save(); } const l = lines[d.m]; v.currentTime = Math.max(0, (d.end ? l.e - 1 : l.t - 0.3)); render(); }
   else if (!d.moved) v.currentTime = Math.max(0, Math.min(peaks.dur, wT(x)));
 });
 wave.addEventListener('wheel', e => {
